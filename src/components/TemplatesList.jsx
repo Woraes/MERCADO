@@ -10,8 +10,13 @@ function TemplatesList({ userId, onSelectTemplate, onClose }) {
   }, [userId])
 
   const loadTemplates = () => {
-    const userTemplates = getTemplatesByUser(userId)
-    setTemplates(userTemplates)
+    try {
+      const userTemplates = getTemplatesByUser(userId)
+      setTemplates(userTemplates)
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error)
+      setTemplates([])
+    }
   }
 
   const handleUseTemplate = (templateId) => {

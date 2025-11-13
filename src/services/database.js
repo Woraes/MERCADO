@@ -17,8 +17,9 @@ export async function initDatabase() {
     try {
       const uint8Array = new Uint8Array(JSON.parse(savedDb))
       db = new SQL.Database(uint8Array)
-      // Verificar se as tabelas existem, se não, criar
+      // Verificar e migrar se necessário
       ensureTables()
+      migrateDatabase()
     } catch (error) {
       console.error('Erro ao carregar banco, criando novo:', error)
       db = new SQL.Database()
@@ -30,6 +31,155 @@ export async function initDatabase() {
   }
   
   return db
+}
+
+// Migrar banco de dados (adicionar colunas que faltam)
+function migrateDatabase() {
+  try {
+    // Verificar se a coluna is_template existe
+    const tableInfo = db.exec("PRAGMA table_info(lists)")
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1]) // Nome da coluna está na posição 1
+      const hasIsTemplate = columns.includes('is_template')
+      
+      if (!hasIsTemplate) {
+        console.log('Migrando banco: adicionando coluna is_template')
+        db.run('ALTER TABLE lists ADD COLUMN is_template INTEGER DEFAULT 0')
+        saveDatabase()
+        console.log('Migração concluída: coluna is_template adicionada')
+      }
+    }
+  } catch (error) {
+    console.error('Erro na migração:', error)
+    // Se a migração falhar, tentar recriar o banco
+    try {
+      console.log('Tentando recriar banco com estrutura atualizada...')
+      const allData = exportAllData()
+      db = new SQL.Database()
+      createTables()
+      importAllData(allData)
+      saveDatabase()
+    } catch (recreateError) {
+      console.error('Erro ao recriar banco:', recreateError)
+    }
+  }
+}
+
+// Exportar todos os dados antes de recriar
+function exportAllData() {
+  const data = {
+    users: [],
+    lists: [],
+    listItems: [],
+    purchases: [],
+    purchaseItems: []
+  }
+  
+  try {
+    // Exportar usuários
+    const usersResult = db.exec('SELECT * FROM users')
+    if (usersResult.length > 0) {
+      data.users = usersResult[0].values.map(row => ({
+        id: row[0],
+        name: row[1],
+        created_at: row[2]
+      }))
+    }
+    
+    // Exportar listas
+    const listsResult = db.exec('SELECT * FROM lists')
+    if (listsResult.length > 0) {
+      data.lists = listsResult[0].values.map(row => ({
+        id: row[0],
+        user_id: row[1],
+        name: row[2],
+        status: row[3],
+        created_at: row[4],
+        completed_at: row[5]
+      }))
+    }
+    
+    // Exportar itens de lista
+    const itemsResult = db.exec('SELECT * FROM list_items')
+    if (itemsResult.length > 0) {
+      data.listItems = itemsResult[0].values.map(row => ({
+        id: row[0],
+        list_id: row[1],
+        name: row[2],
+        price: row[3],
+        is_completed: row[4]
+      }))
+    }
+    
+    // Exportar compras
+    const purchasesResult = db.exec('SELECT * FROM purchases')
+    if (purchasesResult.length > 0) {
+      data.purchases = purchasesResult[0].values.map(row => ({
+        id: row[0],
+        user_id: row[1],
+        list_id: row[2],
+        total: row[3],
+        date: row[4]
+      }))
+    }
+    
+    // Exportar itens de compra
+    const purchaseItemsResult = db.exec('SELECT * FROM purchase_items')
+    if (purchaseItemsResult.length > 0) {
+      data.purchaseItems = purchaseItemsResult[0].values.map(row => ({
+        id: row[0],
+        purchase_id: row[1],
+        name: row[2],
+        price: row[3]
+      }))
+    }
+  } catch (error) {
+    console.error('Erro ao exportar dados:', error)
+  }
+  
+  return data
+}
+
+// Importar dados após recriar banco
+function importAllData(data) {
+  try {
+    // Importar usuários
+    data.users.forEach(user => {
+      const stmt = db.prepare('INSERT INTO users (id, name, created_at) VALUES (?, ?, ?)')
+      stmt.run([user.id, user.name, user.created_at])
+      stmt.free()
+    })
+    
+    // Importar listas (com is_template = 0)
+    data.lists.forEach(list => {
+      const stmt = db.prepare('INSERT INTO lists (id, user_id, name, status, is_template, created_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      stmt.run([list.id, list.user_id, list.name, list.status, 0, list.created_at, list.completed_at])
+      stmt.free()
+    })
+    
+    // Importar itens de lista
+    data.listItems.forEach(item => {
+      const stmt = db.prepare('INSERT INTO list_items (id, list_id, name, price, is_completed) VALUES (?, ?, ?, ?, ?)')
+      stmt.run([item.id, item.list_id, item.name, item.price, item.is_completed])
+      stmt.free()
+    })
+    
+    // Importar compras
+    data.purchases.forEach(purchase => {
+      const stmt = db.prepare('INSERT INTO purchases (id, user_id, list_id, total, date) VALUES (?, ?, ?, ?, ?)')
+      stmt.run([purchase.id, purchase.user_id, purchase.list_id, purchase.total, purchase.date])
+      stmt.free()
+    })
+    
+    // Importar itens de compra
+    data.purchaseItems.forEach(item => {
+      const stmt = db.prepare('INSERT INTO purchase_items (id, purchase_id, name, price) VALUES (?, ?, ?, ?)')
+      stmt.run([item.id, item.purchase_id, item.name, item.price])
+      stmt.free()
+    })
+  } catch (error) {
+    console.error('Erro ao importar dados:', error)
+  }
 }
 
 // Garantir que as tabelas existam
@@ -69,13 +219,6 @@ function createTables() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `)
-  
-  // Adicionar coluna is_template se não existir (para bancos antigos)
-  try {
-    db.exec('ALTER TABLE lists ADD COLUMN is_template INTEGER DEFAULT 0')
-  } catch (e) {
-    // Coluna já existe, ignorar erro
-  }
   
   db.run(`
     CREATE TABLE IF NOT EXISTS list_items (
@@ -184,8 +327,8 @@ export function deleteUser(userId) {
     stmtPurchases.run([userId])
     stmtPurchases.free()
     
-    // Deletar listas do usuário
-    const lists = getListsByUser(userId)
+    // Deletar listas do usuário (incluindo templates)
+    const lists = getListsByUser(userId, null, true) // Incluir templates
     lists.forEach(list => {
       // Deletar itens da lista
       const stmtListItems = db.prepare('DELETE FROM list_items WHERE list_id = ?')
@@ -267,12 +410,32 @@ export function getUserById(id) {
 
 // Listas
 export function createList(userId, listName = 'Nova Lista', isTemplate = false) {
-  const stmt = db.prepare('INSERT INTO lists (user_id, name, status, is_template) VALUES (?, ?, ?, ?)')
-  stmt.run([userId, listName, 'draft', isTemplate ? 1 : 0])
-  stmt.free()
-  saveDatabase()
-  const result = db.exec('SELECT last_insert_rowid()')
-  return result[0].values[0][0]
+  try {
+    // Verificar se a coluna is_template existe
+    const tableInfo = db.exec("PRAGMA table_info(lists)")
+    let hasIsTemplate = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasIsTemplate = columns.includes('is_template')
+    }
+    
+    let stmt
+    if (hasIsTemplate) {
+      stmt = db.prepare('INSERT INTO lists (user_id, name, status, is_template) VALUES (?, ?, ?, ?)')
+      stmt.run([userId, listName, 'draft', isTemplate ? 1 : 0])
+    } else {
+      // Se não tem a coluna, criar sem ela
+      stmt = db.prepare('INSERT INTO lists (user_id, name, status) VALUES (?, ?, ?)')
+      stmt.run([userId, listName, 'draft'])
+    }
+    stmt.free()
+    saveDatabase()
+    const result = db.exec('SELECT last_insert_rowid()')
+    return result[0].values[0][0]
+  } catch (error) {
+    console.error('Erro ao criar lista:', error)
+    throw error
+  }
 }
 
 // Criar lista a partir de template
@@ -296,58 +459,113 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
 
 // Salvar lista como template
 export function saveListAsTemplate(listId, templateName = null) {
-  const list = getListById(listId)
-  if (!list) {
-    return { success: false, error: 'Lista não encontrada' }
+  try {
+    // Verificar se a coluna existe
+    const tableInfo = db.exec("PRAGMA table_info(lists)")
+    let hasIsTemplate = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasIsTemplate = columns.includes('is_template')
+    }
+    
+    if (!hasIsTemplate) {
+      // Tentar adicionar a coluna
+      try {
+        db.run('ALTER TABLE lists ADD COLUMN is_template INTEGER DEFAULT 0')
+        saveDatabase()
+        hasIsTemplate = true
+      } catch (alterError) {
+        return { success: false, error: 'Erro ao adicionar coluna is_template. Recarregue a página.' }
+      }
+    }
+    
+    const list = getListById(listId)
+    if (!list) {
+      return { success: false, error: 'Lista não encontrada' }
+    }
+    
+    const name = templateName || list.name
+    const stmt = db.prepare('UPDATE lists SET is_template = 1, name = ? WHERE id = ?')
+    stmt.run([name, listId])
+    stmt.free()
+    saveDatabase()
+    return { success: true }
+  } catch (error) {
+    console.error('Erro ao salvar template:', error)
+    return { success: false, error: error.message }
   }
-  
-  const name = templateName || list.name
-  const stmt = db.prepare('UPDATE lists SET is_template = 1, name = ? WHERE id = ?')
-  stmt.run([name, listId])
-  stmt.free()
-  saveDatabase()
-  return { success: true }
 }
 
 // Obter templates do usuário
 export function getTemplatesByUser(userId) {
-  const stmt = db.prepare('SELECT * FROM lists WHERE user_id = ? AND is_template = 1 ORDER BY name')
-  stmt.bind([userId])
-  const result = []
-  
-  while (stmt.step()) {
-    result.push(stmt.getAsObject())
+  try {
+    // Verificar se a coluna existe antes de usar
+    const tableInfo = db.exec("PRAGMA table_info(lists)")
+    let hasIsTemplate = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasIsTemplate = columns.includes('is_template')
+    }
+    
+    if (!hasIsTemplate) {
+      // Se não tem a coluna, retornar vazio (ainda não migrado)
+      return []
+    }
+    
+    const stmt = db.prepare('SELECT * FROM lists WHERE user_id = ? AND is_template = 1 ORDER BY name')
+    stmt.bind([userId])
+    const result = []
+    
+    while (stmt.step()) {
+      result.push(stmt.getAsObject())
+    }
+    stmt.free()
+    
+    return result
+  } catch (error) {
+    console.error('Erro ao buscar templates:', error)
+    return []
   }
-  stmt.free()
-  
-  return result
 }
 
 export function getListsByUser(userId, status = null, includeTemplates = false) {
-  let query = 'SELECT * FROM lists WHERE user_id = ?'
-  const params = [userId]
-  
-  if (!includeTemplates) {
-    query += ' AND is_template = 0'
+  try {
+    // Verificar se a coluna existe antes de usar
+    const tableInfo = db.exec("PRAGMA table_info(lists)")
+    let hasIsTemplate = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasIsTemplate = columns.includes('is_template')
+    }
+    
+    let query = 'SELECT * FROM lists WHERE user_id = ?'
+    const params = [userId]
+    
+    if (hasIsTemplate && !includeTemplates) {
+      query += ' AND is_template = 0'
+    }
+    
+    if (status) {
+      query += ' AND status = ?'
+      params.push(status)
+    }
+    
+    query += ' ORDER BY created_at DESC'
+    
+    const stmt = db.prepare(query)
+    stmt.bind(params)
+    const result = []
+    
+    while (stmt.step()) {
+      result.push(stmt.getAsObject())
+    }
+    stmt.free()
+    
+    return result
+  } catch (error) {
+    console.error('Erro ao buscar listas:', error)
+    return []
   }
-  
-  if (status) {
-    query += ' AND status = ?'
-    params.push(status)
-  }
-  
-  query += ' ORDER BY created_at DESC'
-  
-  const stmt = db.prepare(query)
-  stmt.bind(params)
-  const result = []
-  
-  while (stmt.step()) {
-    result.push(stmt.getAsObject())
-  }
-  stmt.free()
-  
-  return result
 }
 
 export function getListById(listId) {
