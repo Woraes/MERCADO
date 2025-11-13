@@ -6,7 +6,9 @@ import './MarketMode.css'
 function MarketMode({ listId, userId, onComplete, onCancel }) {
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
+  const [editingField, setEditingField] = useState(null) // 'price' ou 'quantity'
   const [editPrice, setEditPrice] = useState('')
+  const [editQuantity, setEditQuantity] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [purchaseTotal, setPurchaseTotal] = useState(0)
   const [completedItemsCount, setCompletedItemsCount] = useState(0)
@@ -20,24 +22,35 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
     setItems(listItems)
   }
 
-  const handleStartEdit = (item) => {
+  const handleStartEdit = (item, field) => {
     setEditingId(item.id)
-    setEditPrice(item.price.toString())
+    setEditingField(field)
+    if (field === 'price') {
+      setEditPrice(item.price.toString())
+    } else if (field === 'quantity') {
+      setEditQuantity((item.quantity || 1).toString())
+    }
   }
 
-  const handleSavePrice = (itemId) => {
+  const handleSaveEdit = (itemId) => {
     const item = items.find(i => i.id === itemId)
     if (item) {
-      updateListItem(itemId, item.name, parseFloat(editPrice) || 0)
+      const price = editingField === 'price' ? (parseFloat(editPrice) || 0) : item.price
+      const quantity = editingField === 'quantity' ? (parseInt(editQuantity) || 1) : (item.quantity || 1)
+      updateListItem(itemId, item.name, price, quantity)
       loadItems()
       setEditingId(null)
+      setEditingField(null)
       setEditPrice('')
+      setEditQuantity('')
     }
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
+    setEditingField(null)
     setEditPrice('')
+    setEditQuantity('')
   }
 
   const handleToggleComplete = (itemId, isCompleted) => {
@@ -85,7 +98,9 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
   const calculateTotal = () => {
     return items.reduce((total, item) => {
       if (item.is_completed) {
-        return total + (parseFloat(item.price) || 0)
+        const price = parseFloat(item.price) || 0
+        const quantity = parseInt(item.quantity) || 1
+        return total + (price * quantity)
       }
       return total
     }, 0)
@@ -157,31 +172,61 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
                 className={`market-item ${item.is_completed ? 'completed' : ''}`}
               >
                 {editingId === item.id ? (
-                  <div className="edit-price-form">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Valor"
-                      value={editPrice}
-                      onChange={(e) => setEditPrice(e.target.value)}
-                      className="input input-price"
-                      autoFocus
-                    />
-                    <div className="edit-actions">
-                      <button
-                        onClick={() => handleSavePrice(item.id)}
-                        className="btn btn-save"
-                      >
-                        Salvar
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="btn btn-cancel"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+                  <div className="edit-form">
+                    {editingField === 'price' ? (
+                      <>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Valor"
+                          value={editPrice}
+                          onChange={(e) => setEditPrice(e.target.value)}
+                          className="input input-price"
+                          autoFocus
+                        />
+                        <div className="edit-actions">
+                          <button
+                            onClick={() => handleSaveEdit(item.id)}
+                            className="btn btn-save"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="btn btn-cancel"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Quantidade"
+                          value={editQuantity}
+                          onChange={(e) => setEditQuantity(e.target.value)}
+                          className="input input-quantity"
+                          autoFocus
+                        />
+                        <div className="edit-actions">
+                          <button
+                            onClick={() => handleSaveEdit(item.id)}
+                            className="btn btn-save"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="btn btn-cancel"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -193,28 +238,48 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
                         {item.is_completed ? '✓' : ''}
                       </button>
                       <div className="item-info">
-                        <span className="item-name">{item.name}</span>
-                        {item.price > 0 ? (
-                          <span className="item-price">{formatPrice(item.price)}</span>
-                        ) : (
-                          <button
-                            onClick={() => handleStartEdit(item)}
-                            className="btn-add-price"
-                          >
-                            Adicionar valor
-                          </button>
-                        )}
+                        <span className="item-name">
+                          {item.name}
+                          {item.quantity > 1 && (
+                            <span className="item-quantity-badge">x{item.quantity}</span>
+                          )}
+                        </span>
+                        <div className="item-details">
+                          {item.price > 0 ? (
+                            <span className="item-price">
+                              {formatPrice(item.price)} {item.quantity > 1 && `x ${item.quantity} = ${formatPrice(item.price * (item.quantity || 1))}`}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleStartEdit(item, 'price')}
+                              className="btn-add-price"
+                            >
+                              Adicionar valor
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {item.price > 0 && (
+                    <div className="item-actions">
+                      {item.price > 0 && (
+                        <button
+                          onClick={() => handleStartEdit(item, 'price')}
+                          className="btn-edit-price"
+                          aria-label="Editar preço"
+                          title="Editar preço"
+                        >
+                          💰
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleStartEdit(item)}
-                        className="btn-edit-price"
-                        aria-label="Editar preço"
+                        onClick={() => handleStartEdit(item, 'quantity')}
+                        className="btn-edit-quantity"
+                        aria-label="Editar quantidade"
+                        title="Editar quantidade"
                       >
-                        ✏️
+                        🔢
                       </button>
-                    )}
+                    </div>
                   </>
                 )}
               </div>

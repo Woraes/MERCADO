@@ -49,6 +49,20 @@ function migrateDatabase() {
         console.log('Migração concluída: coluna is_template adicionada')
       }
     }
+    
+    // Verificar se a coluna quantity existe em list_items
+    const itemsTableInfo = db.exec("PRAGMA table_info(list_items)")
+    if (itemsTableInfo.length > 0) {
+      const itemColumns = itemsTableInfo[0].values.map(row => row[1])
+      const hasQuantity = itemColumns.includes('quantity')
+      
+      if (!hasQuantity) {
+        console.log('Migrando banco: adicionando coluna quantity')
+        db.run('ALTER TABLE list_items ADD COLUMN quantity INTEGER DEFAULT 1')
+        saveDatabase()
+        console.log('Migração concluída: coluna quantity adicionada')
+      }
+    }
   } catch (error) {
     console.error('Erro na migração:', error)
     // Se a migração falhar, tentar recriar o banco
@@ -226,6 +240,7 @@ function createTables() {
       list_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       price REAL DEFAULT 0,
+      quantity INTEGER DEFAULT 1,
       is_completed INTEGER DEFAULT 0,
       FOREIGN KEY (list_id) REFERENCES lists(id)
     )
@@ -480,11 +495,12 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
       console.warn('Template não tem itens, mas a lista será criada')
     }
     
-    // Copiar cada item
+    // Copiar cada item (com quantidade)
     templateItems.forEach((item, index) => {
       try {
-        const itemId = addListItem(newListId, item.name, 0)
-        console.log(`Item ${index + 1} copiado: "${item.name}" -> ID: ${itemId}`)
+        const quantity = item.quantity || 1
+        const itemId = addListItem(newListId, item.name, 0, quantity)
+        console.log(`Item ${index + 1} copiado: "${item.name}" (qtd: ${quantity}) -> ID: ${itemId}`)
       } catch (itemError) {
         console.error(`Erro ao copiar item ${index + 1} (${item.name}):`, itemError)
       }
@@ -498,7 +514,8 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
       console.error('ERRO: Nenhum item foi copiado!')
       // Tentar novamente
       templateItems.forEach(item => {
-        addListItem(newListId, item.name, 0)
+        const quantity = item.quantity || 1
+        addListItem(newListId, item.name, 0, quantity)
       })
       saveDatabase()
       const retryItems = getListItems(newListId)
@@ -571,11 +588,12 @@ export function saveListAsTemplate(listId, templateName = null) {
         const name = templateName || listData.name
         const newTemplateId = createList(listData.user_id, name, true)
         
-        // Copiar itens
+        // Copiar itens (sem valores, mas com quantidade)
         const originalItems = getListItems(listId)
         console.log('Itens a copiar:', originalItems.length)
         originalItems.forEach(item => {
-          addListItem(newTemplateId, item.name, 0)
+          const quantity = item.quantity || 1
+          addListItem(newTemplateId, item.name, 0, quantity)
         })
         
         saveDatabase()
@@ -593,11 +611,12 @@ export function saveListAsTemplate(listId, templateName = null) {
     const newTemplateId = createList(list.user_id, name, true) // true = isTemplate
     console.log('Template criado com ID:', newTemplateId)
     
-    // Copiar itens da lista original para o template (sem valores)
+    // Copiar itens da lista original para o template (sem valores, mas com quantidade)
     const originalItems = getListItems(listId)
     console.log('Copiando', originalItems.length, 'itens para o template')
     originalItems.forEach(item => {
-      addListItem(newTemplateId, item.name, 0) // Sempre sem valores no template
+      const quantity = item.quantity || 1
+      addListItem(newTemplateId, item.name, 0, quantity) // Sempre sem valores no template, mas mantém quantidade
     })
     
     saveDatabase()
@@ -748,7 +767,7 @@ export function deleteList(listId) {
 }
 
 // Itens da lista
-export function addListItem(listId, itemName, price = 0) {
+export function addListItem(listId, itemName, price = 0, quantity = 1) {
   try {
     if (!db) {
       console.error('Banco de dados não inicializado em addListItem')
@@ -763,8 +782,22 @@ export function addListItem(listId, itemName, price = 0) {
       return null
     }
     
-    const stmt = db.prepare('INSERT INTO list_items (list_id, name, price) VALUES (?, ?, ?)')
-    stmt.run([listIdNum, itemName, price || 0])
+    // Verificar se a coluna quantity existe
+    const tableInfo = db.exec("PRAGMA table_info(list_items)")
+    let hasQuantity = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasQuantity = columns.includes('quantity')
+    }
+    
+    let stmt
+    if (hasQuantity) {
+      stmt = db.prepare('INSERT INTO list_items (list_id, name, price, quantity) VALUES (?, ?, ?, ?)')
+      stmt.run([listIdNum, itemName, price || 0, quantity || 1])
+    } else {
+      stmt = db.prepare('INSERT INTO list_items (list_id, name, price) VALUES (?, ?, ?)')
+      stmt.run([listIdNum, itemName, price || 0])
+    }
     stmt.free()
     
     const result = db.exec('SELECT last_insert_rowid()')
@@ -774,7 +807,7 @@ export function addListItem(listId, itemName, price = 0) {
     return newItemId
   } catch (error) {
     console.error('Erro em addListItem:', error)
-    console.error('Parâmetros:', { listId, itemName, price })
+    console.error('Parâmetros:', { listId, itemName, price, quantity })
     return null
   }
 }
@@ -813,11 +846,35 @@ export function getListItems(listId) {
   }
 }
 
-export function updateListItem(itemId, name, price) {
-  const stmt = db.prepare('UPDATE list_items SET name = ?, price = ? WHERE id = ?')
-  stmt.run([name, price, itemId])
-  stmt.free()
-  saveDatabase()
+export function updateListItem(itemId, name, price, quantity = null) {
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em updateListItem')
+      return
+    }
+    
+    // Verificar se a coluna quantity existe
+    const tableInfo = db.exec("PRAGMA table_info(list_items)")
+    let hasQuantity = false
+    if (tableInfo.length > 0) {
+      const columns = tableInfo[0].values.map(row => row[1])
+      hasQuantity = columns.includes('quantity')
+    }
+    
+    let stmt
+    if (hasQuantity && quantity !== null && quantity !== undefined) {
+      stmt = db.prepare('UPDATE list_items SET name = ?, price = ?, quantity = ? WHERE id = ?')
+      stmt.run([name, price, quantity, itemId])
+    } else {
+      stmt = db.prepare('UPDATE list_items SET name = ?, price = ? WHERE id = ?')
+      stmt.run([name, price, itemId])
+    }
+    stmt.free()
+    saveDatabase()
+  } catch (error) {
+    console.error('Erro em updateListItem:', error)
+    console.error('Parâmetros:', { itemId, name, price, quantity })
+  }
 }
 
 export function deleteListItem(itemId) {
