@@ -69,15 +69,12 @@ function UserSelector({ onSelectUser, currentUserId }) {
           {users.map(user => (
             <button
               key={user.id}
-              onClick={async () => {
-                try {
-                  await initDatabase()
-                  onSelectUser(user.id)
-                } catch (error) {
-                  setError('Erro ao selecionar usuário: ' + error.message)
-                }
+              onClick={() => {
+                const userId = typeof user.id === 'string' ? parseInt(user.id) : user.id
+                onSelectUser(userId)
               }}
               className={`user-button ${currentUserId === user.id ? 'active' : ''}`}
+              type="button"
             >
               <span className="user-icon">👤</span>
               <span className="user-name">{user.name}</span>

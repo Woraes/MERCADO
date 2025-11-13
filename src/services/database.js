@@ -118,11 +118,24 @@ export function getUsers() {
 }
 
 export function getUserById(id) {
-  const stmt = db.prepare('SELECT * FROM users WHERE id = ?')
-  stmt.bind([id])
-  const result = stmt.getAsObject()
-  stmt.free()
-  return result.id ? result : null
+  try {
+    const userId = typeof id === 'string' ? parseInt(id) : id
+    const stmt = db.prepare('SELECT * FROM users WHERE id = ?')
+    stmt.bind([userId])
+    const result = stmt.getAsObject()
+    stmt.free()
+    if (result.id) {
+      return {
+        id: result.id,
+        name: result.name,
+        created_at: result.created_at
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Erro em getUserById:', error)
+    return null
+  }
 }
 
 // Listas

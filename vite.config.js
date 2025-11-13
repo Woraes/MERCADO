@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: '/MERCADO/',
+  optimizeDeps: {
+    exclude: ['sql.js']
+  },
   plugins: [
     react(),
     VitePWA({

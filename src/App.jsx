@@ -76,7 +76,7 @@ function App() {
         localStorage.setItem('currentUserId', userId.toString())
         loadLists(userId)
       } else {
-        console.error('Usuário não encontrado:', userId)
+        console.error('Usuário não encontrado. ID:', userId)
       }
     } catch (error) {
       console.error('Erro ao selecionar usuário:', error)
