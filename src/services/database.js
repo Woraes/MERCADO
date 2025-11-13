@@ -460,6 +460,12 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
 // Salvar lista como template
 export function saveListAsTemplate(listId, templateName = null) {
   try {
+    if (!db) {
+      return { success: false, error: 'Banco de dados não inicializado' }
+    }
+    
+    console.log('saveListAsTemplate - Procurando lista ID:', listId)
+    
     // Verificar se a coluna existe
     const tableInfo = db.exec("PRAGMA table_info(lists)")
     let hasIsTemplate = false
@@ -474,32 +480,74 @@ export function saveListAsTemplate(listId, templateName = null) {
         db.run('ALTER TABLE lists ADD COLUMN is_template INTEGER DEFAULT 0')
         saveDatabase()
         hasIsTemplate = true
+        console.log('Coluna is_template adicionada')
       } catch (alterError) {
+        console.error('Erro ao adicionar coluna:', alterError)
         return { success: false, error: 'Erro ao adicionar coluna is_template. Recarregue a página.' }
       }
     }
     
+    // Buscar lista
     const list = getListById(listId)
-    if (!list) {
-      return { success: false, error: 'Lista não encontrada' }
+    console.log('saveListAsTemplate - Lista encontrada:', list)
+    
+    if (!list || !list.id) {
+      // Tentar buscar diretamente com query
+      const stmt = db.prepare('SELECT * FROM lists WHERE id = ?')
+      stmt.bind([listId])
+      if (stmt.step()) {
+        const row = stmt.get()
+        const listData = {
+          id: row[0],
+          user_id: row[1],
+          name: row[2],
+          status: row[3],
+          is_template: row[4] || 0,
+          created_at: row[5],
+          completed_at: row[6]
+        }
+        stmt.free()
+        console.log('Lista encontrada via query direta:', listData)
+        
+        // Usar os dados encontrados
+        const name = templateName || listData.name
+        const newTemplateId = createList(listData.user_id, name, true)
+        
+        // Copiar itens
+        const originalItems = getListItems(listId)
+        console.log('Itens a copiar:', originalItems.length)
+        originalItems.forEach(item => {
+          addListItem(newTemplateId, item.name, 0)
+        })
+        
+        saveDatabase()
+        console.log('Template salvo com ID:', newTemplateId)
+        return { success: true, templateId: newTemplateId }
+      }
+      stmt.free()
+      
+      return { success: false, error: `Lista não encontrada. ID: ${listId}` }
     }
     
     // Criar uma nova lista como template (cópia) ao invés de modificar a original
     const name = templateName || list.name
+    console.log('Criando template com nome:', name, 'User ID:', list.user_id)
     const newTemplateId = createList(list.user_id, name, true) // true = isTemplate
+    console.log('Template criado com ID:', newTemplateId)
     
     // Copiar itens da lista original para o template (sem valores)
     const originalItems = getListItems(listId)
+    console.log('Copiando', originalItems.length, 'itens para o template')
     originalItems.forEach(item => {
       addListItem(newTemplateId, item.name, 0) // Sempre sem valores no template
     })
     
     saveDatabase()
-    console.log('Template salvo com ID:', newTemplateId)
+    console.log('Template salvo com sucesso! ID:', newTemplateId)
     return { success: true, templateId: newTemplateId }
   } catch (error) {
     console.error('Erro ao salvar template:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'Erro desconhecido ao salvar template' }
   }
 }
 
@@ -576,11 +624,48 @@ export function getListsByUser(userId, status = null, includeTemplates = false) 
 }
 
 export function getListById(listId) {
-  const stmt = db.prepare('SELECT * FROM lists WHERE id = ?')
-  stmt.bind([listId])
-  const result = stmt.getAsObject()
-  stmt.free()
-  return result.id ? result : null
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em getListById')
+      return null
+    }
+    
+    const stmt = db.prepare('SELECT * FROM lists WHERE id = ?')
+    stmt.bind([listId])
+    
+    // Tentar getAsObject primeiro
+    const objResult = stmt.getAsObject()
+    
+    if (objResult && objResult.id !== undefined && objResult.id !== null) {
+      stmt.free()
+      return objResult
+    }
+    
+    // Se getAsObject não funcionou, tentar step/get
+    stmt.reset()
+    stmt.bind([listId])
+    
+    if (stmt.step()) {
+      const row = stmt.get()
+      const list = {
+        id: row[0],
+        user_id: row[1],
+        name: row[2],
+        status: row[3],
+        is_template: row[4] || 0,
+        created_at: row[5],
+        completed_at: row[6]
+      }
+      stmt.free()
+      return list
+    }
+    
+    stmt.free()
+    return null
+  } catch (error) {
+    console.error('Erro em getListById:', error)
+    return null
+  }
 }
 
 export function updateListStatus(listId, status) {
