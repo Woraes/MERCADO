@@ -440,21 +440,48 @@ export function createList(userId, listName = 'Nova Lista', isTemplate = false) 
 
 // Criar lista a partir de template
 export function createListFromTemplate(userId, templateId, newListName = null) {
-  const template = getListById(templateId)
-  if (!template) {
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em createListFromTemplate')
+      return null
+    }
+    
+    console.log('createListFromTemplate - User ID:', userId, 'Template ID:', templateId)
+    
+    const template = getListById(templateId)
+    console.log('Template encontrado:', template)
+    
+    if (!template || !template.id) {
+      console.error('Template não encontrado para ID:', templateId)
+      return null
+    }
+    
+    const listName = newListName || template.name || 'Nova Lista'
+    console.log('Criando lista com nome:', listName)
+    
+    const newListId = createList(userId, listName, false)
+    console.log('Nova lista criada com ID:', newListId)
+    
+    if (!newListId) {
+      console.error('Erro ao criar lista')
+      return null
+    }
+    
+    // Copiar itens do template (sem valores)
+    const templateItems = getListItems(templateId)
+    console.log('Copiando', templateItems.length, 'itens do template')
+    
+    templateItems.forEach(item => {
+      addListItem(newListId, item.name, 0)
+    })
+    
+    saveDatabase()
+    console.log('Lista criada com sucesso a partir do template. Novo ID:', newListId)
+    return newListId
+  } catch (error) {
+    console.error('Erro em createListFromTemplate:', error)
     return null
   }
-  
-  const listName = newListName || `${template.name} (Cópia)`
-  const newListId = createList(userId, listName, false)
-  
-  // Copiar itens do template (sem valores)
-  const templateItems = getListItems(templateId)
-  templateItems.forEach(item => {
-    addListItem(newListId, item.name, 0)
-  })
-  
-  return newListId
 }
 
 // Salvar lista como template

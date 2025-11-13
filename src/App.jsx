@@ -106,11 +106,18 @@ function App() {
     }
   }
 
-  const handleSelectTemplate = (templateListId) => {
-    if (currentUserId) {
+  const handleSelectTemplate = (newListId) => {
+    if (currentUserId && newListId) {
+      console.log('Criando lista a partir do template, novo ID:', newListId)
+      // Recarregar listas para incluir a nova
       loadLists(currentUserId)
-      setCurrentListId(templateListId)
-      loadListItems(templateListId)
+      // Aguardar um pouco para garantir que a lista foi criada
+      setTimeout(() => {
+        setCurrentListId(newListId)
+        loadListItems(newListId)
+      }, 100)
+    } else {
+      console.error('Erro: currentUserId ou newListId não definido', { currentUserId, newListId })
     }
   }
 

@@ -20,10 +20,20 @@ function TemplatesList({ userId, onSelectTemplate, onClose }) {
   }
 
   const handleUseTemplate = (templateId) => {
-    const newListId = createListFromTemplate(userId, templateId)
-    if (newListId) {
-      onSelectTemplate(newListId)
-      onClose()
+    try {
+      console.log('Usando template ID:', templateId, 'User ID:', userId)
+      const newListId = createListFromTemplate(userId, templateId)
+      console.log('Nova lista criada com ID:', newListId)
+      if (newListId) {
+        onSelectTemplate(newListId)
+        onClose()
+      } else {
+        alert('Erro ao criar lista a partir do template. Tente novamente.')
+        console.error('createListFromTemplate retornou null ou undefined')
+      }
+    } catch (error) {
+      console.error('Erro ao usar template:', error)
+      alert('Erro ao usar template: ' + error.message)
     }
   }
 
