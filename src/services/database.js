@@ -448,38 +448,69 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
     
     console.log('createListFromTemplate - User ID:', userId, 'Template ID:', templateId)
     
-    const template = getListById(templateId)
+    // Converter IDs para número se necessário
+    const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId
+    const templateIdNum = typeof templateId === 'string' ? parseInt(templateId) : templateId
+    
+    const template = getListById(templateIdNum)
     console.log('Template encontrado:', template)
     
     if (!template || !template.id) {
-      console.error('Template não encontrado para ID:', templateId)
+      console.error('Template não encontrado para ID:', templateIdNum)
       return null
     }
     
     const listName = newListName || template.name || 'Nova Lista'
-    console.log('Criando lista com nome:', listName)
+    console.log('Criando lista com nome:', listName, 'User ID:', userIdNum)
     
-    const newListId = createList(userId, listName, false)
-    console.log('Nova lista criada com ID:', newListId)
+    const newListId = createList(userIdNum, listName, false)
+    console.log('Nova lista criada com ID:', newListId, 'Tipo:', typeof newListId)
     
     if (!newListId) {
-      console.error('Erro ao criar lista')
+      console.error('Erro ao criar lista - createList retornou null/undefined')
       return null
     }
     
     // Copiar itens do template (sem valores)
-    const templateItems = getListItems(templateId)
-    console.log('Copiando', templateItems.length, 'itens do template')
+    const templateItems = getListItems(templateIdNum)
+    console.log('Itens encontrados no template:', templateItems.length)
+    console.log('Itens:', templateItems)
     
-    templateItems.forEach(item => {
-      addListItem(newListId, item.name, 0)
+    if (templateItems.length === 0) {
+      console.warn('Template não tem itens, mas a lista será criada')
+    }
+    
+    // Copiar cada item
+    templateItems.forEach((item, index) => {
+      try {
+        const itemId = addListItem(newListId, item.name, 0)
+        console.log(`Item ${index + 1} copiado: "${item.name}" -> ID: ${itemId}`)
+      } catch (itemError) {
+        console.error(`Erro ao copiar item ${index + 1} (${item.name}):`, itemError)
+      }
     })
+    
+    // Verificar se os itens foram copiados
+    const copiedItems = getListItems(newListId)
+    console.log('Itens copiados para nova lista:', copiedItems.length)
+    
+    if (templateItems.length > 0 && copiedItems.length === 0) {
+      console.error('ERRO: Nenhum item foi copiado!')
+      // Tentar novamente
+      templateItems.forEach(item => {
+        addListItem(newListId, item.name, 0)
+      })
+      saveDatabase()
+      const retryItems = getListItems(newListId)
+      console.log('Após retry, itens na lista:', retryItems.length)
+    }
     
     saveDatabase()
     console.log('Lista criada com sucesso a partir do template. Novo ID:', newListId)
     return newListId
   } catch (error) {
     console.error('Erro em createListFromTemplate:', error)
+    console.error('Stack:', error.stack)
     return null
   }
 }
@@ -718,25 +749,68 @@ export function deleteList(listId) {
 
 // Itens da lista
 export function addListItem(listId, itemName, price = 0) {
-  const stmt = db.prepare('INSERT INTO list_items (list_id, name, price) VALUES (?, ?, ?)')
-  stmt.run([listId, itemName, price])
-  stmt.free()
-  saveDatabase()
-  const result = db.exec('SELECT last_insert_rowid()')
-  return result[0].values[0][0]
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em addListItem')
+      return null
+    }
+    
+    // Garantir que listId é número
+    const listIdNum = typeof listId === 'string' ? parseInt(listId) : listId
+    
+    if (!listIdNum || isNaN(listIdNum)) {
+      console.error('ID de lista inválido:', listId)
+      return null
+    }
+    
+    const stmt = db.prepare('INSERT INTO list_items (list_id, name, price) VALUES (?, ?, ?)')
+    stmt.run([listIdNum, itemName, price || 0])
+    stmt.free()
+    
+    const result = db.exec('SELECT last_insert_rowid()')
+    const newItemId = result[0].values[0][0]
+    
+    saveDatabase()
+    return newItemId
+  } catch (error) {
+    console.error('Erro em addListItem:', error)
+    console.error('Parâmetros:', { listId, itemName, price })
+    return null
+  }
 }
 
 export function getListItems(listId) {
-  const stmt = db.prepare('SELECT * FROM list_items WHERE list_id = ? ORDER BY id')
-  stmt.bind([listId])
-  const result = []
-  
-  while (stmt.step()) {
-    result.push(stmt.getAsObject())
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em getListItems')
+      return []
+    }
+    
+    // Garantir que listId é número
+    const listIdNum = typeof listId === 'string' ? parseInt(listId) : listId
+    
+    if (!listIdNum || isNaN(listIdNum)) {
+      console.error('ID de lista inválido em getListItems:', listId)
+      return []
+    }
+    
+    const stmt = db.prepare('SELECT * FROM list_items WHERE list_id = ? ORDER BY id')
+    stmt.bind([listIdNum])
+    const result = []
+    
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      if (row && row.id) {
+        result.push(row)
+      }
+    }
+    stmt.free()
+    
+    return result
+  } catch (error) {
+    console.error('Erro em getListItems:', error)
+    return []
   }
-  stmt.free()
-  
-  return result
 }
 
 export function updateListItem(itemId, name, price) {
