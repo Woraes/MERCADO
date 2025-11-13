@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { saveListAsTemplate, getListById, getListItems } from '../services/database'
 import './SaveListModal.css'
 
-function SaveListModal({ listId, total, onSave, onDiscard }) {
+function SaveListModal({ listId, total, itemsCount, onSave, onDiscard }) {
   const [templateName, setTemplateName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
@@ -13,23 +13,26 @@ function SaveListModal({ listId, total, onSave, onDiscard }) {
     }).format(price)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (templateName.trim()) {
       setIsSaving(true)
-      const result = saveListAsTemplate(listId, templateName.trim())
-      if (result.success) {
-        onSave()
-      } else {
-        alert('Erro ao salvar lista: ' + result.error)
+      try {
+        const result = saveListAsTemplate(listId, templateName.trim())
+        if (result.success) {
+          onSave()
+        } else {
+          alert('Erro ao salvar lista: ' + result.error)
+          setIsSaving(false)
+        }
+      } catch (error) {
+        console.error('Erro ao salvar template:', error)
+        alert('Erro ao salvar template: ' + error.message)
         setIsSaving(false)
       }
     } else {
       alert('Por favor, digite um nome para a lista')
     }
   }
-
-  const list = getListById(listId)
-  const items = list ? getListItems(listId) : []
 
   return (
     <div className="save-list-overlay">
@@ -43,7 +46,7 @@ function SaveListModal({ listId, total, onSave, onDiscard }) {
           </div>
           <div className="summary-item">
             <span className="summary-label">Itens comprados:</span>
-            <span className="summary-value">{items.length}</span>
+            <span className="summary-value">{itemsCount}</span>
           </div>
         </div>
 

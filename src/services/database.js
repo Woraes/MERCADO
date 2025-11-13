@@ -484,12 +484,19 @@ export function saveListAsTemplate(listId, templateName = null) {
       return { success: false, error: 'Lista não encontrada' }
     }
     
+    // Criar uma nova lista como template (cópia) ao invés de modificar a original
     const name = templateName || list.name
-    const stmt = db.prepare('UPDATE lists SET is_template = 1, name = ? WHERE id = ?')
-    stmt.run([name, listId])
-    stmt.free()
+    const newTemplateId = createList(list.user_id, name, true) // true = isTemplate
+    
+    // Copiar itens da lista original para o template (sem valores)
+    const originalItems = getListItems(listId)
+    originalItems.forEach(item => {
+      addListItem(newTemplateId, item.name, 0) // Sempre sem valores no template
+    })
+    
     saveDatabase()
-    return { success: true }
+    console.log('Template salvo com ID:', newTemplateId)
+    return { success: true, templateId: newTemplateId }
   } catch (error) {
     console.error('Erro ao salvar template:', error)
     return { success: false, error: error.message }

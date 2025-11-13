@@ -9,6 +9,7 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
   const [editPrice, setEditPrice] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [purchaseTotal, setPurchaseTotal] = useState(0)
+  const [completedItemsCount, setCompletedItemsCount] = useState(0)
 
   useEffect(() => {
     loadItems()
@@ -44,10 +45,30 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
     loadItems()
   }
 
+  const handleSelectAll = () => {
+    items.forEach(item => {
+      if (!item.is_completed) {
+        markListItemComplete(item.id, true)
+      }
+    })
+    loadItems()
+  }
+
+  const handleDeselectAll = () => {
+    items.forEach(item => {
+      if (item.is_completed) {
+        markListItemComplete(item.id, false)
+      }
+    })
+    loadItems()
+  }
+
   const handleFinish = () => {
     const total = calculateTotal()
+    const completedItems = items.filter(item => item.is_completed)
     finishPurchase(userId, listId)
     setPurchaseTotal(total)
+    setCompletedItemsCount(completedItems.length)
     setShowSaveModal(true)
   }
 
@@ -97,9 +118,31 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
               style={{ width: `${totalItems > 0 ? (completedCount / totalItems) * 100 : 0}%` }}
             ></div>
           </div>
-          <p className="progress-text">
-            {completedCount} de {totalItems} itens
-          </p>
+          <div className="progress-info">
+            <p className="progress-text">
+              {completedCount} de {totalItems} itens
+            </p>
+            <div className="select-all-actions">
+              {completedCount < totalItems && (
+                <button
+                  onClick={handleSelectAll}
+                  className="btn-select-all"
+                  title="Selecionar todos"
+                >
+                  ✓ Selecionar Todos
+                </button>
+              )}
+              {completedCount > 0 && (
+                <button
+                  onClick={handleDeselectAll}
+                  className="btn-deselect-all"
+                  title="Desselecionar todos"
+                >
+                  ✗ Desmarcar Todos
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="market-items">
@@ -200,6 +243,7 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
         <SaveListModal
           listId={listId}
           total={purchaseTotal}
+          itemsCount={completedItemsCount}
           onSave={handleSaveTemplate}
           onDiscard={handleDiscardTemplate}
         />
