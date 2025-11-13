@@ -27,15 +27,21 @@ function App() {
     const initialize = async () => {
       try {
         await initDatabase()
+        // Aguardar um pouco para garantir que o banco está pronto
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         const savedUserId = localStorage.getItem('currentUserId')
         if (savedUserId) {
           const userId = parseInt(savedUserId)
           const user = getUserById(userId)
-          if (user) {
+          if (user && user.id) {
             setCurrentUserId(userId)
             setCurrentUser(user)
             setShowUserSelector(false)
             loadLists(userId)
+          } else {
+            // Usuário salvo não existe mais, limpar
+            localStorage.removeItem('currentUserId')
           }
         }
         setIsLoading(false)

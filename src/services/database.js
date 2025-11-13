@@ -10,18 +10,41 @@ export async function initDatabase() {
     })
   }
   
-  // Carregar banco existente do IndexedDB ou criar novo
+  // Carregar banco existente do localStorage ou criar novo
   const savedDb = localStorage.getItem('grocery_db')
   
   if (savedDb) {
-    const uint8Array = new Uint8Array(JSON.parse(savedDb))
-    db = new SQL.Database(uint8Array)
+    try {
+      const uint8Array = new Uint8Array(JSON.parse(savedDb))
+      db = new SQL.Database(uint8Array)
+      // Verificar se as tabelas existem, se não, criar
+      ensureTables()
+    } catch (error) {
+      console.error('Erro ao carregar banco, criando novo:', error)
+      db = new SQL.Database()
+      createTables()
+    }
   } else {
     db = new SQL.Database()
     createTables()
   }
   
   return db
+}
+
+// Garantir que as tabelas existam
+function ensureTables() {
+  try {
+    // Tentar buscar usuários para verificar se a tabela existe
+    const result = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+    if (result.length === 0) {
+      // Tabelas não existem, criar
+      createTables()
+    }
+  } catch (error) {
+    console.error('Erro ao verificar tabelas:', error)
+    createTables()
+  }
 }
 
 // Criar tabelas
@@ -94,27 +117,43 @@ function saveDatabase() {
 // Usuários
 export function createUser(name) {
   try {
+    if (!db) {
+      return { success: false, error: 'Banco de dados não inicializado' }
+    }
     const stmt = db.prepare('INSERT INTO users (name) VALUES (?)')
     stmt.run([name])
     stmt.free()
     const result = db.exec('SELECT last_insert_rowid() as id')
     const userId = result[0].values[0][0]
     saveDatabase()
+    console.log('Usuário criado com ID:', userId)
     return { success: true, id: userId }
   } catch (error) {
+    console.error('Erro ao criar usuário:', error)
     return { success: false, error: error.message }
   }
 }
 
 export function getUsers() {
-  const result = db.exec('SELECT * FROM users ORDER BY name')
-  if (result.length === 0) return []
-  
-  return result[0].values.map(row => ({
-    id: row[0],
-    name: row[1],
-    created_at: row[2]
-  }))
+  try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em getUsers')
+      return []
+    }
+    const result = db.exec('SELECT * FROM users ORDER BY name')
+    if (result.length === 0) return []
+    
+    const users = result[0].values.map(row => ({
+      id: row[0],
+      name: row[1],
+      created_at: row[2]
+    }))
+    console.log('Usuários encontrados:', users)
+    return users
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error)
+    return []
+  }
 }
 
 export function getUserById(id) {
