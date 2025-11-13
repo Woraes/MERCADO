@@ -426,6 +426,20 @@ export function getUserById(id) {
 // Listas
 export function createList(userId, listName = 'Nova Lista', isTemplate = false) {
   try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em createList')
+      return null
+    }
+    
+    // Garantir que userId é número
+    const userIdNum = typeof userId === 'string' ? parseInt(userId) : userId
+    if (!userIdNum || isNaN(userIdNum)) {
+      console.error('ID de usuário inválido em createList:', userId)
+      return null
+    }
+    
+    console.log('createList - User ID:', userIdNum, 'Nome:', listName, 'Template:', isTemplate)
+    
     // Verificar se a coluna is_template existe
     const tableInfo = db.exec("PRAGMA table_info(lists)")
     let hasIsTemplate = false
@@ -434,22 +448,81 @@ export function createList(userId, listName = 'Nova Lista', isTemplate = false) 
       hasIsTemplate = columns.includes('is_template')
     }
     
+    // Obter o ID máximo antes de inserir
+    const beforeResult = db.exec('SELECT MAX(id) as max_id FROM lists')
+    const beforeMaxId = beforeResult.length > 0 && beforeResult[0].values.length > 0 
+      ? (beforeResult[0].values[0][0] || 0) 
+      : 0
+    
     let stmt
     if (hasIsTemplate) {
       stmt = db.prepare('INSERT INTO lists (user_id, name, status, is_template) VALUES (?, ?, ?, ?)')
-      stmt.run([userId, listName, 'draft', isTemplate ? 1 : 0])
+      stmt.run([userIdNum, listName, 'draft', isTemplate ? 1 : 0])
     } else {
       // Se não tem a coluna, criar sem ela
       stmt = db.prepare('INSERT INTO lists (user_id, name, status) VALUES (?, ?, ?)')
-      stmt.run([userId, listName, 'draft'])
+      stmt.run([userIdNum, listName, 'draft'])
     }
     stmt.free()
+    
+    // Salvar antes de buscar o ID
     saveDatabase()
-    const result = db.exec('SELECT last_insert_rowid()')
-    return result[0].values[0][0]
+    
+    // Obter o ID da lista criada - tentar múltiplas formas
+    let newListId = null
+    
+    // Método 1: last_insert_rowid()
+    try {
+      const result = db.exec('SELECT last_insert_rowid() as id')
+      if (result.length > 0 && result[0].values.length > 0) {
+        newListId = result[0].values[0][0]
+      }
+    } catch (e) {
+      console.warn('Erro ao usar last_insert_rowid:', e)
+    }
+    
+    // Método 2: Se não funcionou, buscar MAX(id)
+    if (!newListId || newListId === 0) {
+      try {
+        const maxResult = db.exec('SELECT MAX(id) as max_id FROM lists')
+        if (maxResult.length > 0 && maxResult[0].values.length > 0) {
+          const maxId = maxResult[0].values[0][0]
+          if (maxId && maxId > beforeMaxId) {
+            newListId = maxId
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao buscar MAX(id):', e)
+      }
+    }
+    
+    // Método 3: Buscar pela lista recém-criada
+    if (!newListId || newListId === 0) {
+      try {
+        const findStmt = db.prepare('SELECT id FROM lists WHERE user_id = ? AND name = ? ORDER BY id DESC LIMIT 1')
+        findStmt.bind([userIdNum, listName])
+        if (findStmt.step()) {
+          const row = findStmt.get()
+          newListId = row[0]
+        }
+        findStmt.free()
+      } catch (e) {
+        console.warn('Erro ao buscar lista por nome:', e)
+      }
+    }
+    
+    console.log('createList - Lista criada com ID:', newListId, 'Tipo:', typeof newListId)
+    
+    if (!newListId || newListId === 0) {
+      console.error('ERRO: createList não conseguiu obter ID válido')
+      return null
+    }
+    
+    return newListId
   } catch (error) {
     console.error('Erro ao criar lista:', error)
-    throw error
+    console.error('Stack:', error.stack)
+    return null
   }
 }
 
@@ -481,9 +554,16 @@ export function createListFromTemplate(userId, templateId, newListName = null) {
     const newListId = createList(userIdNum, listName, false)
     console.log('Nova lista criada com ID:', newListId, 'Tipo:', typeof newListId)
     
-    if (!newListId) {
-      console.error('Erro ao criar lista - createList retornou null/undefined')
-      return null
+    if (!newListId || newListId === 0) {
+      console.error('Erro ao criar lista - createList retornou null/undefined ou 0')
+      // Tentar novamente
+      console.log('Tentando criar lista novamente...')
+      const retryListId = createList(userIdNum, listName, false)
+      if (!retryListId || retryListId === 0) {
+        console.error('Falha ao criar lista após retry')
+        return null
+      }
+      return retryListId
     }
     
     // Copiar itens do template (sem valores)
