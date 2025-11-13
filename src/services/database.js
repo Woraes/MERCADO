@@ -158,18 +158,51 @@ export function getUsers() {
 
 export function getUserById(id) {
   try {
+    if (!db) {
+      console.error('Banco de dados não inicializado em getUserById')
+      return null
+    }
+    
     const userId = typeof id === 'string' ? parseInt(id) : id
+    console.log('getUserById - Procurando ID:', userId, 'Tipo:', typeof userId)
+    
+    // Usar prepare/bind corretamente
     const stmt = db.prepare('SELECT * FROM users WHERE id = ?')
     stmt.bind([userId])
-    const result = stmt.getAsObject()
-    stmt.free()
-    if (result.id) {
-      return {
-        id: result.id,
-        name: result.name,
-        created_at: result.created_at
+    
+    // Tentar getAsObject primeiro
+    const objResult = stmt.getAsObject()
+    console.log('getUserById - Resultado getAsObject:', objResult)
+    
+    if (objResult && objResult.id !== undefined && objResult.id !== null) {
+      const user = {
+        id: objResult.id,
+        name: objResult.name,
+        created_at: objResult.created_at
       }
+      stmt.free()
+      console.log('getUserById - Usuário encontrado (getAsObject):', user)
+      return user
     }
+    
+    // Se getAsObject não funcionou, tentar step/get
+    stmt.reset()
+    stmt.bind([userId])
+    
+    if (stmt.step()) {
+      const row = stmt.get()
+      const user = {
+        id: row[0],
+        name: row[1],
+        created_at: row[2]
+      }
+      stmt.free()
+      console.log('getUserById - Usuário encontrado (step/get):', user)
+      return user
+    }
+    
+    stmt.free()
+    console.log('getUserById - Usuário não encontrado para ID:', userId)
     return null
   } catch (error) {
     console.error('Erro em getUserById:', error)
