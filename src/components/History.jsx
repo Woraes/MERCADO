@@ -1,6 +1,169 @@
 import { useState, useEffect } from 'react'
 import './History.css'
 
+// Função para gerar PDF
+const generatePDF = (purchase) => {
+  import('jspdf').then(({ default: jsPDF }) => {
+    const doc = new jsPDF()
+    
+    // Título
+    doc.setFontSize(20)
+    doc.text('Comprovante de Compra', 105, 20, { align: 'center' })
+    
+    // Data
+    doc.setFontSize(12)
+    const date = new Date(purchase.date)
+    const dateStr = date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    doc.text(`Data: ${dateStr}`, 20, 35)
+    
+    // Itens
+    doc.setFontSize(14)
+    doc.text('Itens:', 20, 50)
+    
+    let y = 60
+    doc.setFontSize(11)
+    purchase.items.forEach((item, index) => {
+      const itemName = item.name.length > 40 ? item.name.substring(0, 37) + '...' : item.name
+      const price = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(item.price)
+      
+      doc.text(`${index + 1}. ${itemName}`, 25, y)
+      doc.text(price, 170, y, { align: 'right' })
+      y += 8
+      
+      if (y > 270) {
+        doc.addPage()
+        y = 20
+      }
+    })
+    
+    // Total
+    y += 10
+    doc.setFontSize(14)
+    doc.setFont(undefined, 'bold')
+    const total = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(purchase.total)
+    doc.text('Total:', 20, y)
+    doc.text(total, 170, y, { align: 'right' })
+    
+    // Salvar
+    doc.save(`compra-${date.toISOString().split('T')[0]}.pdf`)
+  }).catch(error => {
+    console.error('Erro ao gerar PDF:', error)
+    alert('Erro ao gerar PDF. Tente usar a opção de imprimir.')
+  })
+}
+
+// Função para imprimir
+const printPurchase = (purchase) => {
+  const printWindow = window.open('', '_blank')
+  const date = new Date(purchase.date)
+  const dateStr = date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+  
+  const total = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(purchase.total)
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Comprovante de Compra</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          padding: 20px;
+          max-width: 600px;
+          margin: 0 auto;
+        }
+        h1 {
+          text-align: center;
+          color: #22c55e;
+        }
+        .date {
+          margin-bottom: 20px;
+          color: #666;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        th, td {
+          padding: 10px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        th {
+          background-color: #22c55e;
+          color: white;
+        }
+        .total {
+          text-align: right;
+          font-size: 18px;
+          font-weight: bold;
+          margin-top: 20px;
+          padding-top: 10px;
+          border-top: 2px solid #22c55e;
+        }
+        @media print {
+          body { margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>🛒 Comprovante de Compra</h1>
+      <div class="date"><strong>Data:</strong> ${dateStr}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th style="text-align: right;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${purchase.items.map((item, index) => {
+            const price = new Intl.NumberFormat('pt-BR', {
+              style: 'currency',
+              currency: 'BRL'
+            }).format(item.price)
+            return `<tr>
+              <td>${item.name}</td>
+              <td style="text-align: right;">${price}</td>
+            </tr>`
+          }).join('')}
+        </tbody>
+      </table>
+      <div class="total">Total: ${total}</div>
+    </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+  printWindow.focus()
+  setTimeout(() => {
+    printWindow.print()
+    printWindow.close()
+  }, 250)
+}
+
 function History({ purchases, onClose }) {
   const [selectedMonth, setSelectedMonth] = useState(null)
   const [selectedPurchase, setSelectedPurchase] = useState(null)
@@ -135,10 +298,31 @@ function History({ purchases, onClose }) {
                                 <div className="purchase-items">
                                   {purchase.items.map((item, index) => (
                                     <div key={index} className="purchase-item-detail">
+                                      <span className="item-number">{index + 1}.</span>
                                       <span className="item-name">{item.name}</span>
                                       <span className="item-price">{formatPrice(item.price)}</span>
                                     </div>
                                   ))}
+                                </div>
+                                <div className="purchase-actions">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      generatePDF(purchase)
+                                    }}
+                                    className="btn btn-pdf"
+                                  >
+                                    📄 Baixar PDF
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      printPurchase(purchase)
+                                    }}
+                                    className="btn btn-print"
+                                  >
+                                    🖨️ Imprimir
+                                  </button>
                                 </div>
                               </div>
                             )}

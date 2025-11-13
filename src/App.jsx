@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { initDatabase, getUsers, getUserById, getListsByUser, createList, deleteList, addListItem, getListItems, updateListItem, deleteListItem, getPurchasesByUser, getPurchaseItems } from './services/database'
+import { initDatabase, getUsers, getUserById, getListsByUser, createList, deleteList, addListItem, getListItems, updateListItem, deleteListItem, getPurchasesByUser, getPurchaseItems, createListFromTemplate } from './services/database'
 import UserSelector from './components/UserSelector'
 import MarketMode from './components/MarketMode'
 import History from './components/History'
+import TemplatesList from './components/TemplatesList'
 import ConfirmCard from './components/ConfirmCard'
 import './App.css'
 
@@ -19,6 +20,7 @@ function App() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showMarketMode, setShowMarketMode] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
   const [purchases, setPurchases] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -101,6 +103,14 @@ function App() {
       loadLists(currentUserId)
       setCurrentListId(listId)
       setListItems([])
+    }
+  }
+
+  const handleSelectTemplate = (templateListId) => {
+    if (currentUserId) {
+      loadLists(currentUserId)
+      setCurrentListId(templateListId)
+      loadListItems(templateListId)
     }
   }
 
@@ -278,12 +288,20 @@ function App() {
           <div className="card lists-card">
             <div className="card-header">
               <h2>Minhas Listas</h2>
-              <button 
-                onClick={handleCreateList}
-                className="btn btn-primary btn-small"
-              >
-                + Nova Lista
-              </button>
+              <div className="card-header-actions">
+                <button 
+                  onClick={() => setShowTemplates(true)}
+                  className="btn btn-templates btn-small"
+                >
+                  📋 Listas Salvas
+                </button>
+                <button 
+                  onClick={handleCreateList}
+                  className="btn btn-primary btn-small"
+                >
+                  + Nova Lista
+                </button>
+              </div>
             </div>
             
             {lists.length === 0 ? (
@@ -455,6 +473,14 @@ function App() {
           userId={currentUserId}
           onComplete={handleMarketComplete}
           onCancel={() => setShowMarketMode(false)}
+        />
+      )}
+
+      {showTemplates && (
+        <TemplatesList
+          userId={currentUserId}
+          onSelectTemplate={handleSelectTemplate}
+          onClose={() => setShowTemplates(false)}
         />
       )}
     </div>

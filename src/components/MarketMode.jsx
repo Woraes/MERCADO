@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getListItems, updateListItem, markListItemComplete, finishPurchase } from '../services/database'
+import SaveListModal from './SaveListModal'
 import './MarketMode.css'
 
 function MarketMode({ listId, userId, onComplete, onCancel }) {
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [editPrice, setEditPrice] = useState('')
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [purchaseTotal, setPurchaseTotal] = useState(0)
 
   useEffect(() => {
     loadItems()
@@ -42,7 +45,19 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
   }
 
   const handleFinish = () => {
+    const total = calculateTotal()
     finishPurchase(userId, listId)
+    setPurchaseTotal(total)
+    setShowSaveModal(true)
+  }
+
+  const handleSaveTemplate = () => {
+    setShowSaveModal(false)
+    onComplete()
+  }
+
+  const handleDiscardTemplate = () => {
+    setShowSaveModal(false)
     onComplete()
   }
 
@@ -180,6 +195,15 @@ function MarketMode({ listId, userId, onComplete, onCancel }) {
           </div>
         )}
       </div>
+
+      {showSaveModal && (
+        <SaveListModal
+          listId={listId}
+          total={purchaseTotal}
+          onSave={handleSaveTemplate}
+          onDiscard={handleDiscardTemplate}
+        />
+      )}
     </div>
   )
 }

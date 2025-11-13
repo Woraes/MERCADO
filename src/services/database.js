@@ -63,11 +63,19 @@ function createTables() {
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       status TEXT DEFAULT 'draft',
+      is_template INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       completed_at TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `)
+  
+  // Adicionar coluna is_template se não existir (para bancos antigos)
+  try {
+    db.exec('ALTER TABLE lists ADD COLUMN is_template INTEGER DEFAULT 0')
+  } catch (e) {
+    // Coluna já existe, ignorar erro
+  }
   
   db.run(`
     CREATE TABLE IF NOT EXISTS list_items (
@@ -156,6 +164,53 @@ export function getUsers() {
   }
 }
 
+export function deleteUser(userId) {
+  try {
+    if (!db) {
+      return { success: false, error: 'Banco de dados não inicializado' }
+    }
+    
+    // Deletar compras do usuário primeiro
+    const purchases = getPurchasesByUser(userId)
+    purchases.forEach(purchase => {
+      // Deletar itens da compra
+      const stmtItems = db.prepare('DELETE FROM purchase_items WHERE purchase_id = ?')
+      stmtItems.run([purchase.id])
+      stmtItems.free()
+    })
+    
+    // Deletar compras
+    const stmtPurchases = db.prepare('DELETE FROM purchases WHERE user_id = ?')
+    stmtPurchases.run([userId])
+    stmtPurchases.free()
+    
+    // Deletar listas do usuário
+    const lists = getListsByUser(userId)
+    lists.forEach(list => {
+      // Deletar itens da lista
+      const stmtListItems = db.prepare('DELETE FROM list_items WHERE list_id = ?')
+      stmtListItems.run([list.id])
+      stmtListItems.free()
+    })
+    
+    // Deletar listas
+    const stmtLists = db.prepare('DELETE FROM lists WHERE user_id = ?')
+    stmtLists.run([userId])
+    stmtLists.free()
+    
+    // Deletar usuário
+    const stmt = db.prepare('DELETE FROM users WHERE id = ?')
+    stmt.run([userId])
+    stmt.free()
+    
+    saveDatabase()
+    return { success: true }
+  } catch (error) {
+    console.error('Erro ao deletar usuário:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 export function getUserById(id) {
   try {
     if (!db) {
@@ -211,18 +266,70 @@ export function getUserById(id) {
 }
 
 // Listas
-export function createList(userId, listName = 'Nova Lista') {
-  const stmt = db.prepare('INSERT INTO lists (user_id, name, status) VALUES (?, ?, ?)')
-  stmt.run([userId, listName, 'draft'])
+export function createList(userId, listName = 'Nova Lista', isTemplate = false) {
+  const stmt = db.prepare('INSERT INTO lists (user_id, name, status, is_template) VALUES (?, ?, ?, ?)')
+  stmt.run([userId, listName, 'draft', isTemplate ? 1 : 0])
   stmt.free()
   saveDatabase()
   const result = db.exec('SELECT last_insert_rowid()')
   return result[0].values[0][0]
 }
 
-export function getListsByUser(userId, status = null) {
+// Criar lista a partir de template
+export function createListFromTemplate(userId, templateId, newListName = null) {
+  const template = getListById(templateId)
+  if (!template) {
+    return null
+  }
+  
+  const listName = newListName || `${template.name} (Cópia)`
+  const newListId = createList(userId, listName, false)
+  
+  // Copiar itens do template (sem valores)
+  const templateItems = getListItems(templateId)
+  templateItems.forEach(item => {
+    addListItem(newListId, item.name, 0)
+  })
+  
+  return newListId
+}
+
+// Salvar lista como template
+export function saveListAsTemplate(listId, templateName = null) {
+  const list = getListById(listId)
+  if (!list) {
+    return { success: false, error: 'Lista não encontrada' }
+  }
+  
+  const name = templateName || list.name
+  const stmt = db.prepare('UPDATE lists SET is_template = 1, name = ? WHERE id = ?')
+  stmt.run([name, listId])
+  stmt.free()
+  saveDatabase()
+  return { success: true }
+}
+
+// Obter templates do usuário
+export function getTemplatesByUser(userId) {
+  const stmt = db.prepare('SELECT * FROM lists WHERE user_id = ? AND is_template = 1 ORDER BY name')
+  stmt.bind([userId])
+  const result = []
+  
+  while (stmt.step()) {
+    result.push(stmt.getAsObject())
+  }
+  stmt.free()
+  
+  return result
+}
+
+export function getListsByUser(userId, status = null, includeTemplates = false) {
   let query = 'SELECT * FROM lists WHERE user_id = ?'
   const params = [userId]
+  
+  if (!includeTemplates) {
+    query += ' AND is_template = 0'
+  }
   
   if (status) {
     query += ' AND status = ?'

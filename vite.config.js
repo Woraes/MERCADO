@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Smart Grocery List',
-        short_name: 'Grocery List',
+        name: 'Lista Mercado DEA',
+        short_name: 'Lista Mercado DEA',
         description: 'Lista de compras inteligente e rápida',
         theme_color: '#22c55e',
         background_color: '#ffffff',

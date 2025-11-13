@@ -75,6 +75,23 @@
   margin-bottom: 1rem;
 }
 
+.card-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-templates {
+  background: var(--accent-orange);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.btn-templates:hover {
+  background: var(--accent-orange-dark);
+  transform: translateY(-2px);
+}
+
 .add-product-form {
   display: flex;
   flex-direction: column;
