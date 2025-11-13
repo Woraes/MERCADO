@@ -65,14 +65,21 @@ function App() {
     setListItems(items)
   }
 
-  const handleSelectUser = (userId) => {
-    const user = getUserById(userId)
-    if (user) {
-      setCurrentUserId(userId)
-      setCurrentUser(user)
-      setShowUserSelector(false)
-      localStorage.setItem('currentUserId', userId.toString())
-      loadLists(userId)
+  const handleSelectUser = async (userId) => {
+    try {
+      await initDatabase()
+      const user = getUserById(userId)
+      if (user && user.id) {
+        setCurrentUserId(userId)
+        setCurrentUser(user)
+        setShowUserSelector(false)
+        localStorage.setItem('currentUserId', userId.toString())
+        loadLists(userId)
+      } else {
+        console.error('Usuário não encontrado:', userId)
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar usuário:', error)
     }
   }
 

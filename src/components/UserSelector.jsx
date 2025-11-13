@@ -19,21 +19,31 @@ function UserSelector({ onSelectUser, currentUserId }) {
       setUsers(userList)
       setIsLoading(false)
     } catch (error) {
-      setError('Erro ao carregar usuários')
+      console.error('Erro ao carregar usuários:', error)
+      setError('Erro ao carregar usuários: ' + error.message)
       setIsLoading(false)
     }
   }
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault()
     if (newUserName.trim()) {
-      const result = createUser(newUserName.trim())
-      if (result.success) {
-        setNewUserName('')
-        loadUsers()
-        setError('')
-      } else {
-        setError(result.error || 'Erro ao criar usuário')
+      try {
+        await initDatabase()
+        const result = createUser(newUserName.trim())
+        if (result.success) {
+          setNewUserName('')
+          await loadUsers()
+          setError('')
+          // Selecionar automaticamente o usuário recém-criado
+          if (result.id) {
+            onSelectUser(result.id)
+          }
+        } else {
+          setError(result.error || 'Erro ao criar usuário')
+        }
+      } catch (error) {
+        setError('Erro ao criar usuário: ' + error.message)
       }
     }
   }
@@ -59,7 +69,14 @@ function UserSelector({ onSelectUser, currentUserId }) {
           {users.map(user => (
             <button
               key={user.id}
-              onClick={() => onSelectUser(user.id)}
+              onClick={async () => {
+                try {
+                  await initDatabase()
+                  onSelectUser(user.id)
+                } catch (error) {
+                  setError('Erro ao selecionar usuário: ' + error.message)
+                }
+              }}
               className={`user-button ${currentUserId === user.id ? 'active' : ''}`}
             >
               <span className="user-icon">👤</span>

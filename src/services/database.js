@@ -97,8 +97,10 @@ export function createUser(name) {
     const stmt = db.prepare('INSERT INTO users (name) VALUES (?)')
     stmt.run([name])
     stmt.free()
+    const result = db.exec('SELECT last_insert_rowid() as id')
+    const userId = result[0].values[0][0]
     saveDatabase()
-    return { success: true, id: db.exec('SELECT last_insert_rowid()')[0].values[0][0] }
+    return { success: true, id: userId }
   } catch (error) {
     return { success: false, error: error.message }
   }
