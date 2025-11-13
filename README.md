@@ -1,4 +1,4 @@
-# 🛒 Smart Grocery List
+# 🛒 Smart DEA List
 
 Um app estilo "Smart Grocery List" com design clean e funcional, inspirado em apps como AnyList mas com foco brasileiro. Interface rápida para adicionar produtos, calcular totais automaticamente, e salvar suas listas.
 
