@@ -1,0 +1,87 @@
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 2000;
+}
+
+.tutorial-card {
+  background: var(--surface-color);
+  border-radius: 32px;
+  padding: 2rem;
+  width: min(640px, 100%);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.tutorial-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 31, 0.15);
+  color: var(--brand-primary-dark);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.tutorial-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.tutorial-steps {
+  display: grid;
+  gap: 1rem;
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.tutorial-step {
+  background: var(--brand-cream);
+  border-radius: 18px;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(240, 224, 209, 0.9);
+}
+
+.tutorial-step strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.tutorial-step p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.tutorial-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tutorial-primary {
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
+  color: white;
+  width: 100%;
+  border-radius: 16px;
+}
+
+.tutorial-secondary {
+  background: transparent;
+  border: 1px solid rgba(47, 42, 37, 0.2);
+  border-radius: 16px;
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .tutorial-card {
+    padding: 1.5rem;
+    border-radius: 20px;
+  }
+}
+
+

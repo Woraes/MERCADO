@@ -1,34 +1,26 @@
 .user-selector-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
   padding: 1rem;
-  animation: fadeIn 0.2s ease;
+  z-index: 1500;
 }
 
 .user-selector-card {
-  background: white;
-  border-radius: 16px;
+  background: var(--surface-color);
+  border-radius: 28px;
   padding: 2rem;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
-  animation: slideUp 0.3s ease;
+  width: min(520px, 100%);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
 }
 
 .user-selector-card h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: var(--text-primary);
   text-align: center;
+  margin-bottom: 1.25rem;
+  font-size: 1.6rem;
 }
 
 .error-message {
@@ -54,51 +46,39 @@
 }
 
 .user-button {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: var(--bg-color);
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(240, 224, 209, 0.8);
+  background: var(--brand-cream);
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 1rem;
-  flex: 1;
-  text-align: left;
 }
 
 .btn-delete-user {
-  background: transparent;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1rem;
-  font-size: 1.25rem;
+  background: rgba(255, 122, 31, 0.1);
+  border: none;
+  border-radius: 16px;
+  padding: 0.75rem 0.85rem;
+  font-size: 1.15rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
 }
 
 .btn-delete-user:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #dc2626;
-  opacity: 1;
-  transform: scale(1.1);
+  background: rgba(255, 66, 66, 0.15);
 }
 
 .user-button:hover {
-  background: white;
-  border-color: var(--primary-green-light);
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  border-color: var(--brand-secondary);
 }
 
 .user-button.active {
-  background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+  background: linear-gradient(135deg, var(--brand-secondary) 0%, var(--brand-secondary-dark) 100%);
   color: white;
-  border-color: var(--primary-green-dark);
 }
 
 .user-icon {
@@ -120,7 +100,7 @@
   flex-direction: column;
   gap: 1rem;
   padding-top: 1.5rem;
-  border-top: 2px solid var(--border-color);
+  border-top: 1px solid rgba(240, 224, 209, 0.8);
 }
 
 @keyframes fadeIn {

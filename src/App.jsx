@@ -5,6 +5,7 @@ import MarketMode from './components/MarketMode'
 import History from './components/History'
 import TemplatesList from './components/TemplatesList'
 import ConfirmCard from './components/ConfirmCard'
+import TutorialOverlay from './components/TutorialOverlay'
 import './App.css'
 
 function App() {
@@ -15,14 +16,17 @@ function App() {
   const [currentListId, setCurrentListId] = useState(null)
   const [listItems, setListItems] = useState([])
   const [productName, setProductName] = useState('')
+  const [productQuantity, setProductQuantity] = useState(1)
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
+  const [editQuantity, setEditQuantity] = useState(1)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showMarketMode, setShowMarketMode] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [purchases, setPurchases] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   // Inicializar banco de dados
   useEffect(() => {
@@ -54,6 +58,15 @@ function App() {
     }
     initialize()
   }, [])
+
+  useEffect(() => {
+    if (!showUserSelector) {
+      const hasSeen = localStorage.getItem('willcompras_tutorial_seen')
+      if (!hasSeen) {
+        setShowTutorial(true)
+      }
+    }
+  }, [showUserSelector])
 
   const loadLists = (userId) => {
     const userLists = getListsByUser(userId, 'draft')
@@ -143,19 +156,25 @@ function App() {
 
   const handleAddItem = (e) => {
     e.preventDefault()
-    if (productName.trim() && currentListId) {
-      addListItem(currentListId, productName.trim(), 0)
+    const name = productName.trim()
+    if (!name || !currentUserId) return
+    
+    const quantityValue = Number(productQuantity)
+    const safeQuantity = Number.isNaN(quantityValue) || quantityValue <= 0 ? 1 : Math.floor(quantityValue)
+    
+    if (currentListId) {
+      addListItem(currentListId, name, 0, safeQuantity)
       loadListItems(currentListId)
-      setProductName('')
-    } else if (productName.trim() && !currentListId) {
-      // Criar lista automaticamente se não existir
+    } else {
       const listId = createList(currentUserId)
       setCurrentListId(listId)
-      addListItem(listId, productName.trim(), 0)
+      addListItem(listId, name, 0, safeQuantity)
       loadLists(currentUserId)
       loadListItems(listId)
-      setProductName('')
     }
+    
+    setProductName('')
+    setProductQuantity(1)
   }
 
   const handleDeleteItem = (itemId) => {
@@ -166,21 +185,26 @@ function App() {
   const handleStartEdit = (item) => {
     setEditingId(item.id)
     setEditName(item.name)
+    setEditQuantity(item.quantity || 1)
   }
 
   const handleSaveEdit = (itemId) => {
     const item = listItems.find(i => i.id === itemId)
     if (item) {
-      updateListItem(itemId, editName.trim(), item.price)
+      const quantityValue = Number(editQuantity)
+      const safeQuantity = Number.isNaN(quantityValue) || quantityValue <= 0 ? 1 : Math.floor(quantityValue)
+      updateListItem(itemId, editName.trim(), item.price, safeQuantity)
       loadListItems(currentListId)
       setEditingId(null)
       setEditName('')
+      setEditQuantity(1)
     }
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
     setEditName('')
+    setEditQuantity(1)
   }
 
   const handleClearList = () => {
@@ -191,7 +215,9 @@ function App() {
 
   const confirmClearList = () => {
     if (currentListId) {
-      listItems.forEach(item => deleteListItem(item.id))
+      for (const item of listItems) {
+        deleteListItem(item.id)
+      }
       loadListItems(currentListId)
     }
     setShowConfirm(false)
@@ -209,6 +235,11 @@ function App() {
     setCurrentListId(null)
     setListItems([])
     loadPurchases()
+  }
+
+  const handleCloseTutorial = () => {
+    localStorage.setItem('willcompras_tutorial_seen', 'true')
+    setShowTutorial(false)
   }
 
   const loadPurchases = () => {
@@ -241,6 +272,9 @@ function App() {
     }).format(price)
   }
 
+  const activeList = lists.find((list) => list.id === currentListId)
+  const friendlyName = currentUser?.name?.split(' ')[0] || 'comprador(a)'
+
   if (isLoading) {
     return (
       <div className="app">
@@ -264,23 +298,22 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <div>
-            <h1>🛒 Lista de Compras</h1>
-            <p className="subtitle">
-              {currentUser?.name} • Organize suas compras de forma inteligente
-            </p>
+          <div className="hero-copy">
+            <span className="badge">WillCompras</span>
+            <h1>Olá, {friendlyName}! Pronto para a feira de hoje?</h1>
+            <p>Monte sua lista, vá ao mercado e finalize tudo no mesmo fluxo, pensado para quem cuida da casa.</p>
           </div>
           <div className="header-actions">
             <button 
               onClick={handleChangeUser}
-              className="btn btn-user"
+              className="btn btn-secondary"
               aria-label="Trocar usuário"
             >
-              👤 {currentUser?.name}
+              👤 Trocar usuário
             </button>
             <button 
               onClick={() => setShowHistory(true)}
-              className="btn btn-history"
+              className="btn btn-secondary"
               aria-label="Ver histórico"
             >
               📊 Histórico
@@ -294,7 +327,7 @@ function App() {
           {/* Listas salvas */}
           <div className="card lists-card">
             <div className="card-header">
-              <h2>Minhas Listas</h2>
+              <h2>Minhas listas rápidas</h2>
               <div className="card-header-actions">
                 <button 
                   onClick={() => setShowTemplates(true)}
@@ -306,7 +339,7 @@ function App() {
                   onClick={handleCreateList}
                   className="btn btn-primary btn-small"
                 >
-                  + Nova Lista
+                  + Lista rápida
                 </button>
               </div>
             </div>
@@ -349,24 +382,38 @@ function App() {
           {/* Adicionar produto */}
           {currentListId && (
             <div className="card add-product-card">
-              <h2>Adicionar Produto</h2>
+              <h2>Adicionar item</h2>
               <form onSubmit={handleAddItem} className="add-product-form">
-                <div className="form-group">
-                  <input
-                    type="text"
-                    placeholder="Nome do produto (sem valor ainda)"
-                    value={productName}
-                    onChange={(e) => setProductName(e.target.value)}
-                    className="input"
-                    required
-                  />
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Produto</label>
+                    <input
+                      type="text"
+                      placeholder="Ex.: Café, Arroz, Tomate..."
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Quantidade</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={productQuantity}
+                      onChange={(e) => setProductQuantity(e.target.value)}
+                      className="input"
+                      required
+                    />
+                  </div>
                 </div>
                 <button type="submit" className="btn btn-primary">
-                  Adicionar
+                  Adicionar à lista
                 </button>
               </form>
               <p className="hint-text">
-                💡 Adicione produtos sem valores. No mercado, você preencherá os preços!
+                💡 Adicione todos os itens em casa. No mercado você registra valores, quantidades e imprime o comprovante.
               </p>
             </div>
           )}
@@ -375,7 +422,12 @@ function App() {
           {currentListId && (
             <div className="card products-card">
               <div className="card-header">
-                <h2>Produtos ({listItems.length})</h2>
+                <h2>{activeList?.name} ({listItems.length})</h2>
+                {listItems.length > 0 && (
+                  <button onClick={handleClearList} className="btn btn-clear btn-small">
+                    Limpar lista
+                  </button>
+                )}
               </div>
 
               {listItems.length === 0 ? (
@@ -390,12 +442,25 @@ function App() {
                       <div key={item.id} className="product-item">
                         {editingId === item.id ? (
                           <div className="edit-form">
-                            <input
-                              type="text"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              className="input input-edit"
-                            />
+                            <div className="form-group">
+                              <label className="form-label">Produto</label>
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="input input-edit"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Quantidade</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={editQuantity}
+                                onChange={(e) => setEditQuantity(e.target.value)}
+                                className="input input-edit"
+                              />
+                            </div>
                             <div className="edit-actions">
                               <button
                                 onClick={() => handleSaveEdit(item.id)}
@@ -415,18 +480,24 @@ function App() {
                           <>
                             <div className="product-info">
                               <span className="product-name">{item.name}</span>
+                              <div className="product-meta">
+                                <span>Qtd: {item.quantity || 1}x</span>
+                                <span className="product-price">
+                                  Previsto: {formatPrice(item.price || 0)}
+                                </span>
+                              </div>
                             </div>
                             <div className="product-actions">
                               <button
                                 onClick={() => handleStartEdit(item)}
-                                className="btn-icon btn-edit"
+                                className="btn-icon edit"
                                 aria-label="Editar"
                               >
                                 ✏️
                               </button>
                               <button
                                 onClick={() => handleDeleteItem(item.id)}
-                                className="btn-icon btn-delete"
+                                className="btn-icon delete"
                                 aria-label="Remover"
                               >
                                 🗑️
@@ -453,7 +524,7 @@ function App() {
 
           {!currentListId && (
             <div className="card empty-list-card">
-              <p>Selecione uma lista ou crie uma nova para começar!</p>
+              <p>Crie sua primeira lista WillCompras para começar a organizar o mercado 😄</p>
             </div>
           )}
         </div>
@@ -478,6 +549,7 @@ function App() {
         <MarketMode
           listId={currentListId}
           userId={currentUserId}
+          listName={activeList?.name || 'Lista WillCompras'}
           onComplete={handleMarketComplete}
           onCancel={() => setShowMarketMode(false)}
         />
@@ -489,6 +561,10 @@ function App() {
           onSelectTemplate={handleSelectTemplate}
           onClose={() => setShowTemplates(false)}
         />
+      )}
+
+      {showTutorial && (
+        <TutorialOverlay onClose={handleCloseTutorial} />
       )}
     </div>
   )

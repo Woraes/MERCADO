@@ -1,10 +1,7 @@
 .save-list-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,64 +11,101 @@
 }
 
 .save-list-modal {
-  background: white;
-  border-radius: 16px;
+  background: var(--surface-color);
+  border-radius: 28px;
   padding: 2rem;
-  max-width: 500px;
+  max-width: 620px;
   width: 100%;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.15);
   animation: slideUp 0.3s ease;
 }
 
 .save-list-modal h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: var(--text-primary);
   text-align: center;
+  font-size: 1.7rem;
+  margin-bottom: 1.25rem;
 }
 
 .purchase-summary {
-  background: var(--bg-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
+  background: var(--brand-cream);
+  border-radius: 20px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
 }
 
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .summary-label {
-  font-size: 1rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-size: 0.9rem;
 }
 
 .summary-value {
-  font-size: 1.25rem;
-  color: var(--primary-green-dark);
+  font-size: 1.4rem;
   font-weight: 700;
+  color: var(--brand-secondary);
+}
+
+.purchased-list {
+  margin-bottom: 1rem;
+}
+
+.purchased-list h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.purchased-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 0.5rem;
+  background: #fff;
+}
+
+.purchased-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid rgba(240, 224, 209, 0.6);
+}
+
+.purchased-item:last-child {
+  border-bottom: none;
+}
+
+.purchased-item span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-left: 0.35rem;
+}
+
+.export-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--brand-primary);
+  color: var(--brand-primary-dark);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  flex: 1;
 }
 
 .save-list-question {
-  margin-bottom: 1.5rem;
   text-align: center;
-}
-
-.save-list-question p {
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  line-height: 1.5;
+  margin: 1.25rem 0 0.75rem;
 }
 
 .save-list-form {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .save-list-actions {
@@ -81,68 +115,33 @@
 }
 
 .btn-save-template {
-  background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+  width: 100%;
+  background: linear-gradient(135deg, var(--brand-secondary) 0%, var(--brand-secondary-dark) 100%);
   color: white;
   padding: 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.btn-save-template:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px -2px rgba(34, 197, 94, 0.4);
-}
-
-.btn-save-template:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  border-radius: 18px;
 }
 
 .btn-discard {
-  background: var(--text-secondary);
-  color: white;
-  padding: 0.75rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
   width: 100%;
+  background: rgba(47, 42, 37, 0.08);
+  border: none;
+  border-radius: 18px;
+  padding: 0.85rem;
 }
 
-.btn-discard:hover:not(:disabled) {
-  background: var(--text-primary);
-  transform: translateY(-2px);
-}
-
-.btn-discard:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+@media (max-width: 520px) {
+  .save-list-modal {
+    padding: 1.5rem;
+    border-radius: 20px;
   }
-  to {
-    opacity: 1;
-  }
-}
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+  .purchase-summary {
+    grid-template-columns: 1fr;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .export-actions {
+    flex-direction: column;
   }
 }
 

@@ -14,11 +14,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Lista Mercado DEA',
-        short_name: 'Lista Mercado DEA',
-        description: 'Lista de compras inteligente e rápida',
-        theme_color: '#22c55e',
-        background_color: '#ffffff',
+        name: 'WillCompras',
+        short_name: 'WillCompras',
+        description: 'Listas inteligentes para compras no mercado e na feira',
+        theme_color: '#ff7a1f',
+        background_color: '#fff6ec',
         display: 'standalone',
         icons: [
           {
