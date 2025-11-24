@@ -131,17 +131,54 @@
 }
 
 @media (max-width: 520px) {
+  .save-list-overlay {
+    align-items: flex-end; /* Alinha o modal no fundo */
+    padding: 0; /* Remove padding do overlay para encostar nas bordas */
+  }
+
   .save-list-modal {
     padding: 1.5rem;
-    border-radius: 20px;
+    border-radius: 28px 28px 0 0; /* Arredonda apenas em cima */
+    margin: 0;
+    max-width: 100%;
+    width: 100%;
+    animation: slideUpMobile 0.3s ease-out;
+    max-height: 85vh; /* Ocupa no máximo 85% da altura */
+    overflow-y: auto; /* Permite rolar se o conteúdo for muito grande */
+    position: relative;
+  }
+
+  /* Indicador visual de "puxar" (handle) */
+  .save-list-modal::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background-color: var(--border-color, #e0e0e0);
+    border-radius: 2px;
+    margin: -0.5rem auto 1.5rem auto;
   }
 
   .purchase-summary {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .export-actions {
     flex-direction: column;
+  }
+  
+  .save-list-actions {
+    padding-bottom: env(safe-area-inset-bottom, 1rem); /* Respeita a área segura do iPhone */
+  }
+}
+
+@keyframes slideUpMobile {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
