@@ -6,12 +6,15 @@ import History from './components/History'
 import TemplatesList from './components/TemplatesList'
 import ConfirmCard from './components/ConfirmCard'
 import TutorialOverlay from './components/TutorialOverlay'
+import BottomNavigation from './components/BottomNavigation'
 import './App.css'
 
 function App() {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [showUserSelector, setShowUserSelector] = useState(true)
+  const [activeTab, setActiveTab] = useState('home') // 'home', 'history', 'profile'
+
   const [lists, setLists] = useState([])
   const [currentListId, setCurrentListId] = useState(null)
   const [listItems, setListItems] = useState([])
@@ -21,7 +24,6 @@ function App() {
   const [editName, setEditName] = useState('')
   const [editQuantity, setEditQuantity] = useState(1)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
   const [showMarketMode, setShowMarketMode] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [purchases, setPurchases] = useState([])
@@ -35,7 +37,7 @@ function App() {
         await initDatabase()
         // Aguardar um pouco para garantir que o banco está pronto
         await new Promise(resolve => setTimeout(resolve, 100))
-        
+
         const savedUserId = localStorage.getItem('currentUserId')
         if (savedUserId) {
           const userId = parseInt(savedUserId)
@@ -60,18 +62,18 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!showUserSelector) {
+    if (!showUserSelector && activeTab === 'home') {
       const hasSeen = localStorage.getItem('willcompras_tutorial_seen')
       if (!hasSeen) {
         setShowTutorial(true)
       }
     }
-  }, [showUserSelector])
+  }, [showUserSelector, activeTab])
 
   const loadLists = (userId) => {
     const userLists = getListsByUser(userId, 'draft')
     setLists(userLists)
-    
+
     // Carregar primeira lista se existir
     if (userLists.length > 0 && !currentListId) {
       setCurrentListId(userLists[0].id)
@@ -94,6 +96,7 @@ function App() {
         setCurrentUserId(userId)
         setCurrentUser(user)
         setShowUserSelector(false)
+        setActiveTab('home')
         localStorage.setItem('currentUserId', userId.toString())
         loadLists(userId)
       } else {
@@ -108,6 +111,7 @@ function App() {
     setShowUserSelector(true)
     setCurrentListId(null)
     setListItems([])
+    setActiveTab('home')
   }
 
   const handleCreateList = () => {
@@ -158,10 +162,10 @@ function App() {
     e.preventDefault()
     const name = productName.trim()
     if (!name || !currentUserId) return
-    
+
     const quantityValue = Number(productQuantity)
     const safeQuantity = Number.isNaN(quantityValue) || quantityValue <= 0 ? 1 : Math.floor(quantityValue)
-    
+
     if (currentListId) {
       addListItem(currentListId, name, 0, safeQuantity)
       loadListItems(currentListId)
@@ -172,7 +176,7 @@ function App() {
       loadLists(currentUserId)
       loadListItems(listId)
     }
-    
+
     setProductName('')
     setProductQuantity(1)
   }
@@ -235,6 +239,7 @@ function App() {
     setCurrentListId(null)
     setListItems([])
     loadPurchases()
+    setActiveTab('history') // Vai para o histórico após finalizar
   }
 
   const handleCloseTutorial = () => {
@@ -286,7 +291,7 @@ function App() {
   if (showUserSelector) {
     return (
       <div className="app">
-        <UserSelector 
+        <UserSelector
           onSelectUser={handleSelectUser}
           currentUserId={currentUserId}
         />
@@ -296,252 +301,259 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="hero-copy">
-            <span className="badge">WillCompras</span>
-            <h1>Olá, {friendlyName}! Pronto para a feira de hoje?</h1>
-            <p>Monte sua lista, vá ao mercado e finalize tudo no mesmo fluxo, pensado para quem cuida da casa.</p>
-          </div>
-          <div className="header-actions">
-            <button 
-              onClick={handleChangeUser}
-              className="btn btn-secondary"
-              aria-label="Trocar usuário"
-            >
-              👤 Trocar usuário
-            </button>
-            <button 
-              onClick={() => setShowHistory(true)}
-              className="btn btn-secondary"
-              aria-label="Ver histórico"
-            >
-              📊 Histórico
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="app-main">
-        <div className="container">
-          {/* Listas salvas */}
-          <div className="card lists-card">
-            <div className="card-header">
-              <h2>Minhas listas rápidas</h2>
-              <div className="card-header-actions">
-                <button 
-                  onClick={() => setShowTemplates(true)}
-                  className="btn btn-templates btn-small"
-                >
-                  📋 Listas Salvas
-                </button>
-                <button 
-                  onClick={handleCreateList}
-                  className="btn btn-primary btn-small"
-                >
-                  + Lista rápida
-                </button>
+      {activeTab === 'home' && (
+        <>
+          <header className="app-header">
+            <div className="header-content">
+              <div className="hero-copy">
+                <span className="badge">WillCompras</span>
+                <h1>Olá, {friendlyName}! Pronto para a feira de hoje?</h1>
+                <p>Monte sua lista, vá ao mercado e finalize tudo no mesmo fluxo.</p>
               </div>
             </div>
-            
-            {lists.length === 0 ? (
-              <div className="empty-state">
-                <p>Nenhuma lista criada</p>
-                <p className="empty-hint">Crie uma nova lista para começar!</p>
-              </div>
-            ) : (
-              <div className="lists-grid">
-                {lists.map(list => (
-                  <div 
-                    key={list.id} 
-                    className={`list-card ${currentListId === list.id ? 'active' : ''}`}
-                    onClick={() => handleSelectList(list.id)}
-                  >
-                    <div className="list-card-content">
-                      <span className="list-name">{list.name}</span>
-                      <span className="list-count">
-                        {getListItems(list.id).length} item(ns)
-                      </span>
-                    </div>
+          </header>
+
+          <main className="app-main">
+            <div className="container">
+              {/* Listas salvas */}
+              <div className="card lists-card">
+                <div className="card-header">
+                  <h2>Minhas listas rápidas</h2>
+                  <div className="card-header-actions">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteList(list.id)
-                      }}
-                      className="btn-delete-list"
-                      aria-label="Deletar lista"
+                      onClick={() => setShowTemplates(true)}
+                      className="btn btn-templates btn-small"
                     >
-                      🗑️
+                      📋 Listas Salvas
+                    </button>
+                    <button
+                      onClick={handleCreateList}
+                      className="btn btn-primary btn-small"
+                    >
+                      + Lista rápida
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Adicionar produto */}
-          {currentListId && (
-            <div className="card add-product-card">
-              <h2>Adicionar item</h2>
-              <form onSubmit={handleAddItem} className="add-product-form">
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Produto</label>
-                    <input
-                      type="text"
-                      placeholder="Ex.: Café, Arroz, Tomate..."
-                      value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
-                      className="input"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Quantidade</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={productQuantity}
-                      onChange={(e) => setProductQuantity(e.target.value)}
-                      className="input"
-                      required
-                    />
-                  </div>
                 </div>
-                <button type="submit" className="btn btn-primary">
-                  Adicionar à lista
-                </button>
-              </form>
-              <p className="hint-text">
-                💡 Adicione todos os itens em casa. No mercado você registra valores, quantidades e imprime o comprovante.
-              </p>
-            </div>
-          )}
 
-          {/* Lista de produtos */}
-          {currentListId && (
-            <div className="card products-card">
-              <div className="card-header">
-                <h2>{activeList?.name} ({listItems.length})</h2>
-                {listItems.length > 0 && (
-                  <button onClick={handleClearList} className="btn btn-clear btn-small">
-                    Limpar lista
-                  </button>
-                )}
-              </div>
-
-              {listItems.length === 0 ? (
-                <div className="empty-state">
-                  <p>Sua lista está vazia</p>
-                  <p className="empty-hint">Adicione produtos para começar!</p>
-                </div>
-              ) : (
-                <>
-                  <div className="products-list">
-                    {listItems.map((item) => (
-                      <div key={item.id} className="product-item">
-                        {editingId === item.id ? (
-                          <div className="edit-form">
-                            <div className="form-group">
-                              <label className="form-label">Produto</label>
-                              <input
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="input input-edit"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label className="form-label">Quantidade</label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={editQuantity}
-                                onChange={(e) => setEditQuantity(e.target.value)}
-                                className="input input-edit"
-                              />
-                            </div>
-                            <div className="edit-actions">
-                              <button
-                                onClick={() => handleSaveEdit(item.id)}
-                                className="btn btn-save"
-                              >
-                                Salvar
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                className="btn btn-cancel"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="product-info">
-                              <span className="product-name">{item.name}</span>
-                              <div className="product-meta">
-                                <span>Qtd: {item.quantity || 1}x</span>
-                                <span className="product-price">
-                                  Previsto: {formatPrice(item.price || 0)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="product-actions">
-                              <button
-                                onClick={() => handleStartEdit(item)}
-                                className="btn-icon edit"
-                                aria-label="Editar"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                onClick={() => handleDeleteItem(item.id)}
-                                className="btn-icon delete"
-                                aria-label="Remover"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </>
-                        )}
+                {lists.length === 0 ? (
+                  <div className="empty-state">
+                    <p>Nenhuma lista criada</p>
+                    <p className="empty-hint">Crie uma nova lista para começar!</p>
+                  </div>
+                ) : (
+                  <div className="lists-grid">
+                    {lists.map(list => (
+                      <div
+                        key={list.id}
+                        className={`list-card ${currentListId === list.id ? 'active' : ''}`}
+                        onClick={() => handleSelectList(list.id)}
+                      >
+                        <div className="list-card-content">
+                          <span className="list-name">{list.name}</span>
+                          <span className="list-count">
+                            {getListItems(list.id).length} item(ns)
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteList(list.id)
+                          }}
+                          className="btn-delete-list"
+                          aria-label="Deletar lista"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
 
-                  <div className="market-action">
-                    <button 
-                      onClick={handleOpenMarketMode}
-                      className="btn btn-market"
-                    >
-                      🛒 Ir para o Mercado
+              {/* Adicionar produto */}
+              {currentListId && (
+                <div className="card add-product-card">
+                  <h2>Adicionar item</h2>
+                  <form onSubmit={handleAddItem} className="add-product-form">
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label className="form-label">Produto</label>
+                        <input
+                          type="text"
+                          placeholder="Ex.: Café, Arroz, Tomate..."
+                          value={productName}
+                          onChange={(e) => setProductName(e.target.value)}
+                          className="input"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Quantidade</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={productQuantity}
+                          onChange={(e) => setProductQuantity(e.target.value)}
+                          className="input"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                      Adicionar à lista
                     </button>
+                  </form>
+                  <p className="hint-text">
+                    💡 Adicione todos os itens em casa. No mercado você registra valores, quantidades e imprime o comprovante.
+                  </p>
+                </div>
+              )}
+
+              {/* Lista de produtos */}
+              {currentListId && (
+                <div className="card products-card">
+                  <div className="card-header">
+                    <h2>{activeList?.name} ({listItems.length})</h2>
+                    {listItems.length > 0 && (
+                      <button onClick={handleClearList} className="btn btn-clear btn-small">
+                        Limpar lista
+                      </button>
+                    )}
                   </div>
-                </>
+
+                  {listItems.length === 0 ? (
+                    <div className="empty-state">
+                      <p>Sua lista está vazia</p>
+                      <p className="empty-hint">Adicione produtos para começar!</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="products-list">
+                        {listItems.map((item) => (
+                          <div key={item.id} className="product-item">
+                            {editingId === item.id ? (
+                              <div className="edit-form">
+                                <div className="form-group">
+                                  <label className="form-label">Produto</label>
+                                  <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="input input-edit"
+                                  />
+                                </div>
+                                <div className="form-group">
+                                  <label className="form-label">Quantidade</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={editQuantity}
+                                    onChange={(e) => setEditQuantity(e.target.value)}
+                                    className="input input-edit"
+                                  />
+                                </div>
+                                <div className="edit-actions">
+                                  <button
+                                    onClick={() => handleSaveEdit(item.id)}
+                                    className="btn btn-save"
+                                  >
+                                    Salvar
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="btn btn-cancel"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="product-info">
+                                  <span className="product-name">{item.name}</span>
+                                  <div className="product-meta">
+                                    <span>Qtd: {item.quantity || 1}x</span>
+                                    <span className="product-price">
+                                      Previsto: {formatPrice(item.price || 0)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="product-actions">
+                                  <button
+                                    onClick={() => handleStartEdit(item)}
+                                    className="btn-icon edit"
+                                    aria-label="Editar"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteItem(item.id)}
+                                    className="btn-icon delete"
+                                    aria-label="Remover"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="market-action">
+                        <button
+                          onClick={handleOpenMarketMode}
+                          className="btn btn-market"
+                        >
+                          🛒 Ir para o Mercado
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!currentListId && (
+                <div className="card empty-list-card">
+                  <p>Crie sua primeira lista WillCompras para começar a organizar o mercado 😄</p>
+                </div>
               )}
             </div>
-          )}
+          </main>
+        </>
+      )}
 
-          {!currentListId && (
-            <div className="card empty-list-card">
-              <p>Crie sua primeira lista WillCompras para começar a organizar o mercado 😄</p>
+      {activeTab === 'history' && (
+        <History purchases={purchases} />
+      )}
+
+      {activeTab === 'profile' && (
+        <div className="profile-tab">
+          <div className="container">
+            <div className="card">
+              <h2>Perfil</h2>
+              <div className="profile-info">
+                <p>Usuário atual: <strong>{currentUser?.name}</strong></p>
+                <button
+                  onClick={handleChangeUser}
+                  className="btn btn-secondary"
+                  style={{ marginTop: '1rem', width: '100%' }}
+                >
+                  👤 Trocar usuário
+                </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </main>
+      )}
+
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       {showConfirm && (
         <ConfirmCard
           message="Tem certeza que deseja limpar toda a lista?"
           onConfirm={confirmClearList}
           onCancel={() => setShowConfirm(false)}
-        />
-      )}
-
-      {showHistory && (
-        <History 
-          purchases={purchases}
-          onClose={() => setShowHistory(false)}
         />
       )}
 

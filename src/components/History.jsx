@@ -5,11 +5,11 @@ import './History.css'
 const generatePDF = (purchase) => {
   import('jspdf').then(({ default: jsPDF }) => {
     const doc = new jsPDF()
-    
+
     // Título
     doc.setFontSize(20)
     doc.text('Comprovante de Compra', 105, 20, { align: 'center' })
-    
+
     // Data
     doc.setFontSize(12)
     const date = new Date(purchase.date)
@@ -21,11 +21,11 @@ const generatePDF = (purchase) => {
       minute: '2-digit'
     })
     doc.text(`Data: ${dateStr}`, 20, 35)
-    
+
     // Itens
     doc.setFontSize(14)
     doc.text('Itens:', 20, 50)
-    
+
     let y = 60
     doc.setFontSize(11)
     purchase.items.forEach((item, index) => {
@@ -34,17 +34,17 @@ const generatePDF = (purchase) => {
         style: 'currency',
         currency: 'BRL'
       }).format(item.price)
-      
+
       doc.text(`${index + 1}. ${itemName}`, 25, y)
       doc.text(price, 170, y, { align: 'right' })
       y += 8
-      
+
       if (y > 270) {
         doc.addPage()
         y = 20
       }
     })
-    
+
     // Total
     y += 10
     doc.setFontSize(14)
@@ -55,7 +55,7 @@ const generatePDF = (purchase) => {
     }).format(purchase.total)
     doc.text('Total:', 20, y)
     doc.text(total, 170, y, { align: 'right' })
-    
+
     // Salvar
     doc.save(`compra-${date.toISOString().split('T')[0]}.pdf`)
   }).catch(error => {
@@ -75,12 +75,12 @@ const printPurchase = (purchase) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-  
+
   const total = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   }).format(purchase.total)
-  
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
@@ -140,22 +140,22 @@ const printPurchase = (purchase) => {
         </thead>
         <tbody>
           ${purchase.items.map((item, index) => {
-            const price = new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL'
-            }).format(item.price)
-            return `<tr>
+    const price = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(item.price)
+    return `<tr>
               <td>${item.name}</td>
               <td style="text-align: right;">${price}</td>
             </tr>`
-          }).join('')}
+  }).join('')}
         </tbody>
       </table>
       <div class="total">Total: ${total}</div>
     </body>
     </html>
   `)
-  
+
   printWindow.document.close()
   printWindow.focus()
   setTimeout(() => {
@@ -164,7 +164,7 @@ const printPurchase = (purchase) => {
   }, 250)
 }
 
-function History({ purchases, onClose }) {
+function History({ purchases }) {
   const [selectedMonth, setSelectedMonth] = useState(null)
   const [selectedPurchase, setSelectedPurchase] = useState(null)
 
@@ -173,7 +173,7 @@ function History({ purchases, onClose }) {
     const date = new Date(purchase.date)
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     const monthName = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    
+
     if (!acc[monthKey]) {
       acc[monthKey] = {
         monthName: monthName.charAt(0).toUpperCase() + monthName.slice(1),
@@ -181,10 +181,10 @@ function History({ purchases, onClose }) {
         total: 0
       }
     }
-    
+
     acc[monthKey].purchases.push(purchase)
     acc[monthKey].total += purchase.total
-    
+
     return acc
   }, {})
 
@@ -221,121 +221,116 @@ function History({ purchases, onClose }) {
   const totalThisMonth = months.length > 0 ? months[0][1].total : 0
 
   return (
-    <div className="history-overlay">
-      <div className="history-container">
-        <div className="history-header">
-          <h2>Histórico de Compras</h2>
-          <button onClick={onClose} className="btn-close" aria-label="Fechar">
-            ✕
-          </button>
-        </div>
-
-        {purchases.length === 0 ? (
-          <div className="history-empty">
-            <p>Nenhuma compra registrada ainda</p>
-            <p className="empty-hint">Finalize uma compra para começar o histórico!</p>
-          </div>
-        ) : (
-          <>
-            {/* Estatísticas gerais */}
-            <div className="history-stats">
-              <div className="stat-card">
-                <span className="stat-label">Total Geral</span>
-                <span className="stat-value">{formatPrice(totalAllTime)}</span>
-              </div>
-              <div className="stat-card stat-card-primary">
-                <span className="stat-label">Este Mês</span>
-                <span className="stat-value">{formatPrice(totalThisMonth)}</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Total de Compras</span>
-                <span className="stat-value">{purchases.length}</span>
-              </div>
-            </div>
-
-            {/* Lista de meses */}
-            <div className="months-list">
-              {months.map(([monthKey, monthData]) => (
-                <div key={monthKey} className="month-card">
-                  <div 
-                    className="month-header"
-                    onClick={() => handleMonthClick(monthKey)}
-                  >
-                    <div className="month-info">
-                      <span className="month-name">{monthData.monthName}</span>
-                      <span className="month-count">{monthData.purchases.length} compra(s)</span>
-                    </div>
-                    <div className="month-total">
-                      {formatPrice(monthData.total)}
-                      <span className="month-arrow">
-                        {selectedMonth === monthKey ? '▲' : '▼'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {selectedMonth === monthKey && (
-                    <div className="purchases-list">
-                      {monthData.purchases
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .map((purchase) => (
-                          <div 
-                            key={purchase.id} 
-                            className={`purchase-item ${selectedPurchase?.id === purchase.id ? 'expanded' : ''}`}
-                            onClick={() => handlePurchaseClick(purchase)}
-                          >
-                            <div className="purchase-header">
-                              <div className="purchase-info">
-                                <span className="purchase-date">{formatDate(purchase.date)}</span>
-                                <span className="purchase-items-count">
-                                  {purchase.items.length} item(ns)
-                                </span>
-                              </div>
-                              <span className="purchase-total">{formatPrice(purchase.total)}</span>
-                            </div>
-                            
-                            {selectedPurchase?.id === purchase.id && (
-                              <div className="purchase-details">
-                                <div className="purchase-items">
-                                  {purchase.items.map((item, index) => (
-                                    <div key={index} className="purchase-item-detail">
-                                      <span className="item-number">{index + 1}.</span>
-                                      <span className="item-name">{item.name}</span>
-                                      <span className="item-price">{formatPrice(item.price)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="purchase-actions">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      generatePDF(purchase)
-                                    }}
-                                    className="btn btn-pdf"
-                                  >
-                                    📄 Baixar PDF
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      printPurchase(purchase)
-                                    }}
-                                    className="btn btn-print"
-                                  >
-                                    🖨️ Imprimir
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+    <div className="history-container">
+      <div className="history-header">
+        <h2>Histórico de Compras</h2>
       </div>
+
+      {purchases.length === 0 ? (
+        <div className="history-empty">
+          <p>Nenhuma compra registrada ainda</p>
+          <p className="empty-hint">Finalize uma compra para começar o histórico!</p>
+        </div>
+      ) : (
+        <>
+          {/* Estatísticas gerais */}
+          <div className="history-stats">
+            <div className="stat-card">
+              <span className="stat-label">Total Geral</span>
+              <span className="stat-value">{formatPrice(totalAllTime)}</span>
+            </div>
+            <div className="stat-card stat-card-primary">
+              <span className="stat-label">Este Mês</span>
+              <span className="stat-value">{formatPrice(totalThisMonth)}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Total de Compras</span>
+              <span className="stat-value">{purchases.length}</span>
+            </div>
+          </div>
+
+          {/* Lista de meses */}
+          <div className="months-list">
+            {months.map(([monthKey, monthData]) => (
+              <div key={monthKey} className="month-card">
+                <div
+                  className="month-header"
+                  onClick={() => handleMonthClick(monthKey)}
+                >
+                  <div className="month-info">
+                    <span className="month-name">{monthData.monthName}</span>
+                    <span className="month-count">{monthData.purchases.length} compra(s)</span>
+                  </div>
+                  <div className="month-total">
+                    {formatPrice(monthData.total)}
+                    <span className="month-arrow">
+                      {selectedMonth === monthKey ? '▲' : '▼'}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedMonth === monthKey && (
+                  <div className="purchases-list">
+                    {monthData.purchases
+                      .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      .map((purchase) => (
+                        <div
+                          key={purchase.id}
+                          className={`purchase-item ${selectedPurchase?.id === purchase.id ? 'expanded' : ''}`}
+                          onClick={() => handlePurchaseClick(purchase)}
+                        >
+                          <div className="purchase-header">
+                            <div className="purchase-info">
+                              <span className="purchase-date">{formatDate(purchase.date)}</span>
+                              <span className="purchase-items-count">
+                                {purchase.items.length} item(ns)
+                              </span>
+                            </div>
+                            <span className="purchase-total">{formatPrice(purchase.total)}</span>
+                          </div>
+
+                          {selectedPurchase?.id === purchase.id && (
+                            <div className="purchase-details">
+                              <div className="purchase-items">
+                                {purchase.items.map((item, index) => (
+                                  <div key={index} className="purchase-item-detail">
+                                    <span className="item-number">{index + 1}.</span>
+                                    <span className="item-name">{item.name}</span>
+                                    <span className="item-price">{formatPrice(item.price)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="purchase-actions">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    generatePDF(purchase)
+                                  }}
+                                  className="btn btn-pdf"
+                                >
+                                  📄 Baixar PDF
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    printPurchase(purchase)
+                                  }}
+                                  className="btn btn-print"
+                                >
+                                  🖨️ Imprimir
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
