@@ -16,6 +16,14 @@ function MarketMode({ listId, userId, listName, onComplete, onCancel }) {
 
   useEffect(() => {
     loadItems()
+    
+    // Bloquear rolagem do corpo da página
+    document.body.style.overflow = 'hidden'
+    
+    return () => {
+      // Restaurar rolagem ao sair
+      document.body.style.overflow = 'unset'
+    }
   }, [listId])
 
   const loadItems = () => {
