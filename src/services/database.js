@@ -1,36 +1,14 @@
-const SQL_JS_CDN_BASE = 'https://sql.js.org/dist/'
+import initSqlJs from 'sql.js'
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 
 let db = null
 let SQL = null
-let initSqlJsLoader = null
 
 // Inicializar SQLite
 export async function initDatabase() {
   if (!SQL) {
-    if (!initSqlJsLoader) {
-      initSqlJsLoader = new Promise((resolve, reject) => {
-        if (window.initSqlJs) {
-          resolve(window.initSqlJs)
-          return
-        }
-        const script = document.createElement('script')
-        script.src = `${SQL_JS_CDN_BASE}sql-wasm.js`
-        script.async = true
-        script.onload = () => {
-          if (window.initSqlJs) {
-            resolve(window.initSqlJs)
-          } else {
-            reject(new Error('initSqlJs não disponível após carregar script'))
-          }
-        }
-        script.onerror = () => reject(new Error('Falha ao carregar script sql.js'))
-        document.head.appendChild(script)
-      })
-    }
-
-    const initSqlJs = await initSqlJsLoader
     SQL = await initSqlJs({
-      locateFile: (file) => `${SQL_JS_CDN_BASE}${file}`
+      locateFile: () => sqlWasmUrl
     })
   }
   
