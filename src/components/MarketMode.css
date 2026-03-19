@@ -41,10 +41,13 @@
 .btn-close {
   background: rgba(47, 42, 37, 0.08);
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+  touch-action: manipulation;
 }
 
 .market-progress {
@@ -88,9 +91,12 @@
 .btn-deselect-all {
   border: none;
   border-radius: 12px;
-  padding: 0.5rem 0.9rem;
+  padding: 0.55rem 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 0.85rem;
 }
 
 .btn-select-all {
@@ -133,13 +139,17 @@
 }
 
 .check-button {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   border: 2px solid rgba(47, 42, 37, 0.15);
   background: #fff;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 1.1rem;
 }
 
 .check-button.checked {
@@ -185,8 +195,12 @@
   border: none;
   background: #fff;
   border-radius: 12px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.5rem 0.9rem;
   cursor: pointer;
+  font-size: 1rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 40px;
 }
 
 .market-edit-form {
@@ -264,16 +278,13 @@
   .market-mode-overlay {
     padding: 0;
     align-items: flex-end;
-    /* Começa de baixo, mas vai ocupar tudo */
     background: #fff;
-    /* Fundo branco direto no overlay para mobile */
   }
 
   .market-mode-container {
     border-radius: 0;
     width: 100%;
     height: 100%;
-    /* Ocupa toda a altura */
     max-height: 100%;
     box-shadow: none;
     display: flex;
@@ -281,36 +292,53 @@
   }
 
   .market-header {
-    padding: 1rem 1.25rem;
+    padding: 0.9rem 1rem;
     background: #fff;
     position: sticky;
     top: 0;
     z-index: 10;
   }
 
+  .market-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .market-header p {
+    font-size: 0.8rem;
+  }
+
   .market-progress {
-    padding: 1rem 1.25rem;
+    padding: 0.85rem 1rem;
   }
 
   .market-items {
-    padding: 1rem 1.25rem;
+    padding: 0.85rem 1rem;
     flex: 1;
-    /* Garante que ocupe o espaço disponível */
+  }
+
+  .market-item {
+    padding: 0.85rem;
+    border-radius: 14px;
+  }
+
+  .item-name {
+    font-size: 0.95rem;
+  }
+
+  .item-details {
+    font-size: 0.82rem;
   }
 
   .market-new-item {
-    padding: 1rem 1.25rem;
+    padding: 0.9rem 1rem;
     background: #f9f9f9;
-    /* Leve destaque para a área de adicionar */
   }
 
   .market-footer {
-    padding: 1rem 1.25rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-    /* Área segura */
+    padding: 0.9rem 1rem;
+    padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
     background: #fff;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-    /* Sombra invertida para separar do conteúdo */
   }
 
   .select-all-actions {
@@ -318,12 +346,18 @@
     margin-top: 0.5rem;
   }
 
-  /* Ajustes para aproveitar melhor o espaço horizontal */
-  .market-item {
-    padding: 0.85rem;
+  .btn-select-all,
+  .btn-deselect-all {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
   }
 
-  .item-content {
-    gap: 0.75rem;
+  .new-item-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .input {
+    font-size: 16px;
   }
 }

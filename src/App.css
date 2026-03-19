@@ -105,6 +105,14 @@
   justify-content: center;
   gap: 0.4rem;
   transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-small {
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 10px;
 }
 
 .btn-primary {
@@ -234,8 +242,8 @@
 }
 
 .btn-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   border: none;
   background: rgba(47, 42, 37, 0.08);
@@ -243,6 +251,9 @@
   place-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .btn-icon.edit {
@@ -379,23 +390,46 @@
 
 @media (max-width: 600px) {
   .app-header {
-    padding: 2rem 1.25rem 3rem;
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
+    padding: 1.25rem 1rem 2.5rem;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .hero-copy h1 {
+    font-size: 1.5rem;
+  }
+
+  .hero-copy p {
+    font-size: 0.9rem;
   }
 
   .app-main {
-    margin-top: -2rem;
-    padding: 0 1.25rem 2rem;
+    margin-top: -1.5rem;
+    padding: 0 0.85rem 2rem;
   }
 
   .card {
-    padding: 1.25rem;
+    padding: 1rem;
+    border-radius: 18px;
   }
 
   .card-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .card-header-actions {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .card-header-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.5rem;
   }
 
   .form-grid,
@@ -403,15 +437,52 @@
     grid-template-columns: 1fr;
   }
 
-  .header-actions,
-  .card-header-actions {
-    width: 100%;
-    flex-direction: column;
+  .lists-grid {
+    grid-template-columns: 1fr;
   }
 
-  .btn,
   .btn-market,
+  .btn-finish,
   .btn-clear {
     width: 100%;
+  }
+
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .product-item {
+    padding: 0.85rem 1rem;
+  }
+
+  .product-item:hover {
+    transform: none;
+  }
+
+  .btn:hover {
+    transform: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+
+  .input {
+    font-size: 16px;
+    padding: 0.9rem 0.85rem;
+  }
+
+  .hint-text {
+    font-size: 0.8rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .total-card {
+    padding: 1rem;
+  }
+
+  .total-value {
+    font-size: 1.4rem;
   }
 }

@@ -30,9 +30,22 @@ body {
   background: linear-gradient(135deg, #fff3e1 0%, #fffaf3 50%, #f7fff5 100%);
   min-height: 100vh;
   color: var(--text-primary);
+  overscroll-behavior-y: none;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Melhora scroll em iOS */
+.market-items,
+.products-list,
+.users-list {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Remove delay de tap em elementos interativos */
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
